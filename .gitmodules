@@ -1,0 +1,6 @@
+[submodule "libs/xz"]
+	path = libs/xz
+	url = https://github.com/xz-mirror/xz.git
+[submodule "libs/xdelta"]
+	path = libs/xdelta
+	url = https://github.com/marco-calautti/xdelta.git
