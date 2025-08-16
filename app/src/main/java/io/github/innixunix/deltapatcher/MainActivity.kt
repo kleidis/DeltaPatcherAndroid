@@ -20,6 +20,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.unit.dp
 import java.io.File
 import io.github.innixunix.deltapatcher.ui.theme.DeltaPatcherTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -30,7 +32,33 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        clearCache()
+    }
+    
+    fun clearCache() {
+        try {
+            val cacheDir = cacheDir
+            if (cacheDir.exists()) {
+                cacheDir.listFiles()?.forEach { file ->
+                    try {
+                        if (file.isFile) {
+                            file.delete()
+                        }
+                    } catch (e: Exception) {
+                        // Ignore
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Ignore
+        }
+    }
 }
+
+
 
 // Just left as a fallback for older Android versions or file URIs
 fun getRealFilePath(context: android.content.Context, uri: Uri): String? {
@@ -40,15 +68,47 @@ fun getRealFilePath(context: android.content.Context, uri: Uri): String? {
 
 // Copy files to internal app storage in order for xdelta3 to access them
 // This is necessary because xdelta3 cannot access files from external storage or content URIs directly
-fun copyUriToTempFile(context: Context, uri: Uri, prefix: String): String? {
-    return try {
-        val inputStream = context.contentResolver.openInputStream(uri) ?: return null
+suspend fun copyUriToTempFile(
+    context: Context, 
+    uri: Uri, 
+    prefix: String, 
+    progressCallback: NativeLibrary.ProgressCallback? = null
+): String? = withContext(Dispatchers.IO) {
+    try {
+        val inputStream = context.contentResolver.openInputStream(uri) ?: return@withContext null
+        
+        val fileSize = context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.SIZE), null, null, null)?.use { cursor ->
+            cursor.moveToFirst()
+            cursor.getLong(0)
+        } ?: 0L
+        
         val tempFile = File.createTempFile(prefix, null, context.cacheDir)
-        tempFile.outputStream().use { outputStream ->
-            inputStream.copyTo(outputStream)
+        
+        if (fileSize > 0) {
+            var bytesRead = 0L
+            val buffer = ByteArray(8192)
+            
+            tempFile.outputStream().use { outputStream ->
+                var read: Int
+                while (inputStream.read(buffer).also { read = it } != -1) {
+                    outputStream.write(buffer, 0, read)
+                    bytesRead += read
+                    
+                    val progress = (bytesRead.toFloat() / fileSize).coerceIn(0f, 1f)
+                    progressCallback?.onProgressUpdate(progress, "Copying file... ${(progress * 100).toInt()}%")
+                }
+            }
+        } else {
+            progressCallback?.onProgressUpdate(0f, "Copying file...")
+            tempFile.outputStream().use { outputStream ->
+                inputStream.copyTo(outputStream)
+            }
+            progressCallback?.onProgressUpdate(1f, "File copied successfully")
         }
+        
         tempFile.absolutePath
     } catch (e: Exception) {
+        progressCallback?.onProgressUpdate(0f, "Error: ${e.message}")
         null
     }
 }
@@ -59,6 +119,7 @@ fun DeltaPatcherApp() {
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
     val tabs = listOf("Apply", "Create")
     val context = LocalContext.current
+    var isAnyOperationInProgress by rememberSaveable { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
@@ -99,8 +160,13 @@ fun DeltaPatcherApp() {
         ) {
             tabs.forEachIndexed { index, title ->
                 TextButton(
-                    onClick = { selectedTabIndex = index },
+                    onClick = { 
+                        if (!isAnyOperationInProgress) {
+                            selectedTabIndex = index 
+                        }
+                    },
                     modifier = Modifier.weight(1f),
+                    enabled = !isAnyOperationInProgress,
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = if (selectedTabIndex == index) 
                             MaterialTheme.colorScheme.primary 
@@ -118,8 +184,12 @@ fun DeltaPatcherApp() {
         }
         
         when (selectedTabIndex) {
-            0 -> DecodeTab()
-            1 -> EncodeTab()
+            0 -> DecodeTab(onOperationStateChange = { isInProgress -> 
+                isAnyOperationInProgress = isInProgress 
+            })
+            1 -> EncodeTab(onOperationStateChange = { isInProgress -> 
+                isAnyOperationInProgress = isInProgress 
+            })
         }
     }
 }

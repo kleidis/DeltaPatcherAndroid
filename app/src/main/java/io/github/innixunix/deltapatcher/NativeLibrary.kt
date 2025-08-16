@@ -11,14 +11,16 @@ class NativeLibrary {
             modifiedPath: String,
             outputPath: String,
             description: String,
-            logCallback: LogCallback
+            logCallback: LogCallback,
+            progressCallback: ProgressCallback? = null
         ): Int
 
         external fun decode(
             originalPath: String,
             outputPath: String,
             patchPath: String,
-            logCallback: LogCallback
+            logCallback: LogCallback,
+            progressCallback: ProgressCallback? = null
         ): Int
 
         external fun getDescription(patchPath: String): String
@@ -26,5 +28,9 @@ class NativeLibrary {
 
     interface LogCallback {
         fun onLogUpdate(message: String)
+    }
+    
+    interface ProgressCallback {
+        fun onProgressUpdate(progress: Float, message: String)
     }
 }

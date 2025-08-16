@@ -26,6 +26,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 fun generatePatchFileName(originalFileName: String, modifiedFileName: String): String {
@@ -35,7 +37,7 @@ fun generatePatchFileName(originalFileName: String, modifiedFileName: String): S
 }
 
 @Composable
-fun EncodeTab() {
+fun EncodeTab(onOperationStateChange: (Boolean) -> Unit = {}) {
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
@@ -56,7 +58,18 @@ fun EncodeTab() {
     var errorMessage by rememberSaveable { mutableStateOf("") }
     var showSuccessDialog by rememberSaveable { mutableStateOf(false) }
     var isCreating by rememberSaveable { mutableStateOf(false) }
+    
+    // Progress tracking states
+    var isCopyingOriginal by rememberSaveable { mutableStateOf(false) }
+    var originalCopyProgress by rememberSaveable { mutableStateOf(0f) }
+    var originalCopyMessage by rememberSaveable { mutableStateOf("") }
+    var isCopyingModified by rememberSaveable { mutableStateOf(false) }
+    var modifiedCopyProgress by rememberSaveable { mutableStateOf(0f) }
+    var modifiedCopyMessage by rememberSaveable { mutableStateOf("") }
 
+    var totalStorageRequired by rememberSaveable { mutableStateOf(0L) }
+    var showStorageWarning by rememberSaveable { mutableStateOf(false) }
+    
     val canCreatePatch by remember {
         derivedStateOf {
             originalFilePath.isNotEmpty() && 
@@ -65,7 +78,50 @@ fun EncodeTab() {
             outputFileName.isNotBlank()
         }
     }
+    
+    val isAnyOperationInProgress by remember {
+        derivedStateOf {
+            isCopyingOriginal || isCopyingModified || isCreating
+        }
+    }
 
+    fun checkStorageSpace(): Boolean {
+        return try {
+            val cacheDir = context.cacheDir
+            val freeSpace = cacheDir.freeSpace
+            freeSpace > (totalStorageRequired * 2)
+        } catch (e: Exception) {
+            false
+        }
+    }
+    
+    fun addToStorageCounter(filePath: String) {
+        try {
+            val file = File(filePath)
+            if (file.exists()) {
+                totalStorageRequired += file.length()
+            }
+        } catch (e: Exception) {
+            // Ignore
+        }
+    }
+    
+    fun removeFromStorageCounter(filePath: String) {
+        try {
+            val file = File(filePath)
+            if (file.exists()) {
+                totalStorageRequired -= file.length()
+                if (totalStorageRequired < 0) totalStorageRequired = 0
+            }
+        } catch (e: Exception) {
+            // Ignore
+        }
+    }
+    
+    fun resetStorageCounter() {
+        totalStorageRequired = 0
+    }
+    
     fun clearFile(path: String, isTemp: Boolean, onClear: () -> Unit) {
         if (isTemp && path.isNotEmpty()) {
             try {
@@ -75,54 +131,257 @@ fun EncodeTab() {
             }
         }
         onClear()
+        resetStorageCounter()
+    }
+    
+    suspend fun createPatch() {
+        try {
+            if (originalFilePath.isEmpty() || modifiedFilePath.isEmpty() || outputDirUri == null || outputFileName.isBlank()) {
+                withContext(Dispatchers.Main) {
+                    errorMessage = "Please fill in all required fields"
+                    showErrorDialog = true
+                }
+                return
+            }
+
+            if (!checkStorageSpace()) {
+                withContext(Dispatchers.Main) {
+                    showStorageWarning = true
+                }
+                return
+            }
+
+            try {
+                val originalFile = File(originalFilePath)
+                val modifiedFile = File(modifiedFilePath)
+                
+                if (!originalFile.exists()) {
+                    withContext(Dispatchers.Main) {
+                        errorMessage = "Original ROM file not found"
+                        showErrorDialog = true
+                    }
+                    return
+                }
+                
+                if (!modifiedFile.exists()) {
+                    withContext(Dispatchers.Main) {
+                        errorMessage = "Modified ROM file not found"
+                        showErrorDialog = true
+                    }
+                    return
+                }
+                
+                if (originalFile.length() == 0L) {
+                    withContext(Dispatchers.Main) {
+                        errorMessage = "Original ROM file is empty"
+                        showErrorDialog = true
+                    }
+                    return
+                }
+                
+                if (modifiedFile.length() == 0L) {
+                    withContext(Dispatchers.Main) {
+                        errorMessage = "Modified ROM file is empty"
+                        showErrorDialog = true
+                    }
+                    return
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    errorMessage = "Error validating files: ${e.message}"
+                    showErrorDialog = true
+                }
+                return
+            }
+            
+            val tempOutputPath = File(context.cacheDir, outputFileName).absolutePath
+            
+            withContext(Dispatchers.Main) {
+                log = "Original ROM: $originalFileName\n"
+                log += "Modified ROM: $modifiedFileName\n"
+                isCreating = true
+                onOperationStateChange(true)
+            }
+
+            val logCallback = object : NativeLibrary.LogCallback {
+                override fun onLogUpdate(message: String) {
+                    scope.launch(Dispatchers.Main) {
+                        log += message + "\n"
+                    }
+                }
+            }
+            
+            val progressCallback = object : NativeLibrary.ProgressCallback {
+                override fun onProgressUpdate(progress: Float, message: String) {
+                    scope.launch(Dispatchers.Main) {
+                        log += "$message\n"
+                    }
+                }
+            }
+            
+            val result = NativeLibrary.encode(
+                originalFilePath,
+                modifiedFilePath,
+                tempOutputPath,
+                description,
+                logCallback,
+                progressCallback
+            )
+            
+            if (result == 0) {
+                try {
+                    val tempFile = File(tempOutputPath)
+                    if (tempFile.exists()) {
+                        withContext(Dispatchers.Main) {
+                            log += "Output file: ${tempFile.name} (${tempFile.length()} bytes)\n"
+                        }
+                        
+                        val outputDir = DocumentFile.fromTreeUri(context, outputDirUri!!)
+                        val outputFile = outputDir?.createFile("application/octet-stream", outputFileName)
+                        
+                        if (outputFile != null) {
+                            tempFile.inputStream().use { input ->
+                                context.contentResolver.openOutputStream(outputFile.uri)?.use { output ->
+                                    input.copyTo(output)
+                                }
+                            }
+                            
+                            tempFile.delete()
+                            
+                            withContext(Dispatchers.Main) {
+                                showSuccessDialog = true
+                                originalFilePath = ""
+                                originalFileName = ""
+                                originalFileIsTemp = false
+                                modifiedFilePath = ""
+                                modifiedFileName = ""
+                                modifiedFileIsTemp = false
+                                outputFileName = ""
+                                outputDirUri = null
+                                description = ""
+                                resetStorageCounter()
+                            }
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                errorMessage = "Failed to create output file"
+                                showErrorDialog = true
+                            }
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            errorMessage = "Patch creation failed - no output file generated"
+                            showErrorDialog = true
+                        }
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        log += "Error copying output file: ${e.message}\n"
+                        errorMessage = "Error copying output file: ${e.message}"
+                        showErrorDialog = true
+                    }
+                }
+            } else {
+                val xdeltaMessages = log.lowercase()
+                val errorMsg = when {
+                    xdeltaMessages.contains("no such file") ||
+                    xdeltaMessages.contains("cannot open") -> 
+                        "File access error - check if files exist and are readable"
+                    result == 1 -> "General error occurred during patch creation"
+                    result == 2 -> "Invalid arguments provided to xdelta3"
+                    result == 3 -> "Input file error - file may be corrupted or inaccessible"
+                    result == 4 -> "Output file error - cannot write to destination"
+                    result == 5 -> "Memory allocation failed"
+                    else -> "Unknown error occurred (code: $result)\n\nFull log:\n$log"
+                }
+                
+                withContext(Dispatchers.Main) {
+                    log += "Patch creation failed: $errorMsg\n"
+                    errorMessage = errorMsg
+                    showErrorDialog = true
+                }
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                log += "Error: ${e.message}\n"
+                errorMessage = "Error: ${e.message}"
+                showErrorDialog = true
+            }
+        } finally {
+            withContext(Dispatchers.Main) {
+                isCreating = false
+                onOperationStateChange(false)
+            }
+        }
     }
 
     val originalFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
-            try {
-                clearFile(originalFilePath, originalFileIsTemp) {
-                    originalFilePath = ""
-                    originalFileName = ""
-                    originalFileIsTemp = false
-                    outputFileName = ""
-                }
-                
-                val fileName = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    cursor.moveToFirst()
-                    cursor.getString(nameIndex)
-                } ?: "Unknown file"
-                
-                val realPath = getRealFilePath(context, uri)
-                if (realPath != null) {
-                    originalFilePath = realPath
-                    originalFileName = fileName
-                    originalFileIsTemp = false
-                    
-                    if (modifiedFileName.isNotEmpty()) {
-                        outputFileName = generatePatchFileName(fileName, modifiedFileName)
+            scope.launch {
+                try {
+                    if (originalFilePath.isNotEmpty()) {
+                        removeFromStorageCounter(originalFilePath)
                     }
-                } else {
-                    val tempPath = copyUriToTempFile(context, uri, "original")
-                    if (tempPath != null) {
-                        originalFilePath = tempPath
+                    clearFile(originalFilePath, originalFileIsTemp) {
+                        originalFilePath = ""
+                        originalFileName = ""
+                        originalFileIsTemp = false
+                        outputFileName = ""
+                    }
+                    
+                    val fileName = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        cursor.moveToFirst()
+                        cursor.getString(nameIndex)
+                    } ?: "Unknown file"
+                    
+                    val realPath = getRealFilePath(context, uri)
+                    if (realPath != null) {
+                        originalFilePath = realPath
                         originalFileName = fileName
-                        originalFileIsTemp = true
+                        originalFileIsTemp = false
                         
                         if (modifiedFileName.isNotEmpty()) {
                             outputFileName = generatePatchFileName(fileName, modifiedFileName)
                         }
                     } else {
-                        scope.launch {
-                            errorMessage = "Failed to access selected file"
-                            showErrorDialog = true
+                        isCopyingOriginal = true
+                        originalCopyProgress = 0f
+                        originalCopyMessage = "Preparing to copy file..."
+                        
+                        val progressCallback = object : NativeLibrary.ProgressCallback {
+                            override fun onProgressUpdate(progress: Float, message: String) {
+                                originalCopyProgress = progress
+                                originalCopyMessage = message
+                            }
+                        }
+                        
+                        val tempPath = copyUriToTempFile(context, uri, "original", progressCallback)
+                        if (tempPath != null) {
+                            originalFilePath = tempPath
+                            originalFileName = fileName
+                            originalFileIsTemp = true
+                            addToStorageCounter(tempPath)
+                            
+                            if (modifiedFileName.isNotEmpty()) {
+                                outputFileName = generatePatchFileName(fileName, modifiedFileName)
+                            }
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                errorMessage = "Failed to access selected file"
+                                showErrorDialog = true
+                            }
+                        }
+                        
+                        withContext(Dispatchers.Main) {
+                            isCopyingOriginal = false
                         }
                     }
-                }
-            } catch (e: Exception) {
-                scope.launch {
-                    errorMessage = "Error processing file: ${e.message}"
-                    showErrorDialog = true
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        errorMessage = "Error processing file: ${e.message}"
+                        showErrorDialog = true
+                        isCopyingOriginal = false
+                    }
                 }
             }
         }
@@ -130,50 +389,72 @@ fun EncodeTab() {
 
     val modifiedFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
-            try {
-                clearFile(modifiedFilePath, modifiedFileIsTemp) {
-                    modifiedFilePath = ""
-                    modifiedFileName = ""
-                    modifiedFileIsTemp = false
-                    outputFileName = ""
-                }
-                
-                val fileName = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    cursor.moveToFirst()
-                    cursor.getString(nameIndex)
-                } ?: "Unknown file"
-                
-                val realPath = getRealFilePath(context, uri)
-                if (realPath != null) {
-                    modifiedFilePath = realPath
-                    modifiedFileName = fileName
-                    modifiedFileIsTemp = false
-                    
-                    if (originalFileName.isNotEmpty()) {
-                        outputFileName = generatePatchFileName(originalFileName, fileName)
+            scope.launch {
+                try {
+                    if (modifiedFilePath.isNotEmpty()) {
+                        removeFromStorageCounter(modifiedFilePath)
                     }
-                } else {
-                    val tempPath = copyUriToTempFile(context, uri, "modified")
-                    if (tempPath != null) {
-                        modifiedFilePath = tempPath
+                    clearFile(modifiedFilePath, modifiedFileIsTemp) {
+                        modifiedFilePath = ""
+                        modifiedFileName = ""
+                        modifiedFileIsTemp = false
+                        outputFileName = ""
+                    }
+                    
+                    val fileName = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        cursor.moveToFirst()
+                        cursor.getString(nameIndex)
+                    } ?: "Unknown file"
+                    
+                    val realPath = getRealFilePath(context, uri)
+                    if (realPath != null) {
+                        modifiedFilePath = realPath
                         modifiedFileName = fileName
-                        modifiedFileIsTemp = true
+                        modifiedFileIsTemp = false
                         
                         if (originalFileName.isNotEmpty()) {
                             outputFileName = generatePatchFileName(originalFileName, fileName)
                         }
                     } else {
-                        scope.launch {
-                            errorMessage = "Failed to access selected file"
-                            showErrorDialog = true
+                        isCopyingModified = true
+                        modifiedCopyProgress = 0f
+                        modifiedCopyMessage = "Preparing to copy file..."
+                        
+                        val progressCallback = object : NativeLibrary.ProgressCallback {
+                            override fun onProgressUpdate(progress: Float, message: String) {
+                                modifiedCopyProgress = progress
+                                modifiedCopyMessage = message
+                            }
+                        }
+                        
+                        val tempPath = copyUriToTempFile(context, uri, "modified", progressCallback)
+                        if (tempPath != null) {
+                            modifiedFilePath = tempPath
+                            modifiedFileName = fileName
+                            modifiedFileIsTemp = true
+                            addToStorageCounter(tempPath)
+                            
+                            if (originalFileName.isNotEmpty()) {
+                                outputFileName = generatePatchFileName(originalFileName, fileName)
+                            }
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                errorMessage = "Failed to access selected file"
+                                showErrorDialog = true
+                            }
+                        }
+                        
+                        withContext(Dispatchers.Main) {
+                            isCopyingModified = false
                         }
                     }
-                }
-            } catch (e: Exception) {
-                scope.launch {
-                    errorMessage = "Error processing file: ${e.message}"
-                    showErrorDialog = true
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        errorMessage = "Error processing file: ${e.message}"
+                        showErrorDialog = true
+                        isCopyingModified = false
+                    }
                 }
             }
         }
@@ -200,7 +481,35 @@ fun EncodeTab() {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Original File Selection
+        if (isAnyOperationInProgress) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = "Info",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = "Copying files",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
         OutlinedTextField(
             value = originalFileName,
             onValueChange = { },
@@ -231,6 +540,24 @@ fun EncodeTab() {
             },
             singleLine = true
         )
+        
+        if (isCopyingOriginal) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                LinearProgressIndicator(
+                    progress = { originalCopyProgress },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = originalCopyMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
 
         OutlinedTextField(
             value = modifiedFileName,
@@ -262,6 +589,24 @@ fun EncodeTab() {
             },
             singleLine = true
         )
+        
+        if (isCopyingModified) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                LinearProgressIndicator(
+                    progress = { modifiedCopyProgress },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = modifiedCopyMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
 
         OutlinedTextField(
             value = if (outputDirUri == null) "" else "Directory selected",
@@ -321,123 +666,8 @@ fun EncodeTab() {
         
         Button(
             onClick = {
-                scope.launch {
-                    try {
-                        if (originalFilePath.isEmpty() || modifiedFilePath.isEmpty() || outputDirUri == null || outputFileName.isBlank()) {
-                            errorMessage = "Please fill in all required fields"
-                            showErrorDialog = true
-                            return@launch
-                        }
-
-                        try {
-                            val originalFile = File(originalFilePath)
-                            val modifiedFile = File(modifiedFilePath)
-                            
-                            if (!originalFile.exists()) {
-                                errorMessage = "Original ROM file not found"
-                                showErrorDialog = true
-                                return@launch
-                            }
-                            
-                            if (!modifiedFile.exists()) {
-                                errorMessage = "Modified ROM file not found"
-                                showErrorDialog = true
-                                return@launch
-                            }
-                            
-                            if (originalFile.length() == 0L) {
-                                errorMessage = "Original ROM file is empty"
-                                showErrorDialog = true
-                                return@launch
-                            }
-                            
-                            if (modifiedFile.length() == 0L) {
-                                errorMessage = "Modified ROM file is empty"
-                                showErrorDialog = true
-                                return@launch
-                            }
-                        } catch (e: Exception) {
-                            errorMessage = "Error validating files: ${e.message}"
-                            showErrorDialog = true
-                            return@launch
-                        }
-                        
-                        log = "Original ROM: $originalFileName\n"
-                        log += "Modified ROM: $modifiedFileName\n"
-
-                        val tempOutputPath = File(context.cacheDir, outputFileName).absolutePath
-                        isCreating = true
-
-                        val logCallback = object : NativeLibrary.LogCallback {
-                            override fun onLogUpdate(message: String) {
-                                log += message + "\n"
-                            }
-                        }
-                        
-                        val result = NativeLibrary.encode(
-                            originalFilePath,
-                            modifiedFilePath,
-                            tempOutputPath,
-                            description,
-                            logCallback
-                        )
-                        
-                        if (result == 0) {
-                            try {
-                                val tempFile = File(tempOutputPath)
-                                if (tempFile.exists()) {
-                                    log += "Output patch: ${tempFile.name} (${tempFile.length()} bytes)\n"
-                                    
-                                    val outputDir = DocumentFile.fromTreeUri(context, outputDirUri!!)
-                                    val outputFile = outputDir?.createFile("application/octet-stream", outputFileName)
-                                    
-                                    if (outputFile != null) {
-                                        tempFile.inputStream().use { input ->
-                                            context.contentResolver.openOutputStream(outputFile.uri)?.use { output ->
-                                                input.copyTo(output)
-                                            }
-                                        }
-                                        
-                                        // Clean up temp output file
-                                        tempFile.delete()
-                                        
-                                        showSuccessDialog = true
-                                    } else {
-                                        errorMessage = "Failed to create output file"
-                                        showErrorDialog = true
-                                    }
-                                } else {
-                                    errorMessage = "Patch creation failed - no output file generated"
-                                    showErrorDialog = true
-                                }
-                            } catch (e: Exception) {
-                                log += "Error copying output file: ${e.message}\n"
-                                errorMessage = "Error copying output file: ${e.message}"
-                                showErrorDialog = true
-                            }
-                        } else {
-                            //  xdelta3 errors
-                            val errorMsg = when (result) {
-                                1 -> "General error occurred during patch creation"
-                                2 -> "Invalid arguments provided to xdelta3"
-                                3 -> "Input file error - file may be corrupted or inaccessible"
-                                4 -> "Output file error - cannot write to destination"
-                                5 -> "Files are identical - no patch needed"
-                                6 -> "Memory allocation failed"
-                                else -> "Unknown error occurred (code: $result)"
-                            }
-                            
-                            log += "Patch creation failed: $errorMsg\n"
-                            errorMessage = errorMsg
-                            showErrorDialog = true
-                        }
-                    } catch (e: Exception) {
-                        log += "Error: ${e.message}\n"
-                        errorMessage = "Error: ${e.message}"
-                        showErrorDialog = true
-                    } finally {
-                        isCreating = false
-                    }
+                scope.launch(Dispatchers.IO) {
+                    createPatch()
                 }
             },
             enabled = canCreatePatch && !isCreating
@@ -471,21 +701,6 @@ fun EncodeTab() {
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
-                        if (isCreating) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "Processing...", 
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
                     }
                     Icon(
                         if (logExpanded) Icons.Default.KeyboardArrowUp
@@ -532,6 +747,42 @@ fun EncodeTab() {
                     }
                 ) {
                     Text("OK")
+                }
+            }
+        )
+    }
+
+    if (showStorageWarning) {
+        AlertDialog(
+            onDismissRequest = { showStorageWarning = false },
+            title = { Text("Storage Space Warning") },
+            text = { 
+                val requiredMB = (totalStorageRequired * 2) / (1024 * 1024)
+                val freeMB = context.cacheDir.freeSpace / (1024 * 1024)
+                Text(
+                    "This operation requires approximately ${requiredMB}MB of storage space.\n\n" +
+                    "Available space: ${freeMB}MB\n\n" +
+                    "The operation may fail if there isn't enough space. Continue anyway?"
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { 
+                        showStorageWarning = false
+                        // Continue with the operation
+                        scope.launch {
+                            createPatch()
+                        }
+                    }
+                ) {
+                    Text("Continue")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showStorageWarning = false }
+                ) {
+                    Text("Cancel")
                 }
             }
         )
