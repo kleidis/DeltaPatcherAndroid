@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import android.provider.OpenableColumns
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.launch
 import java.io.File
@@ -44,21 +45,22 @@ fun DecodeTab() {
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
     
-    var originalFilePath by remember { mutableStateOf("") }
-    var originalFileName by remember { mutableStateOf("") }
-    var patchFilePath by remember { mutableStateOf("") }
-    var patchFileName by remember { mutableStateOf("") }
-    var outputDirUri by remember { mutableStateOf<Uri?>(null) }
-    var outputFileName by remember { mutableStateOf("") }
-    var patchDescription by remember { mutableStateOf("") }
+    var originalFilePath by rememberSaveable { mutableStateOf("") }
+    var originalFileName by rememberSaveable { mutableStateOf("") }
+    var originalFileIsTemp by rememberSaveable { mutableStateOf(false) }
+    var patchFilePath by rememberSaveable { mutableStateOf("") }
+    var patchFileName by rememberSaveable { mutableStateOf("") }
+    var patchFileIsTemp by rememberSaveable { mutableStateOf(false) }
+    var outputDirUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var outputFileName by rememberSaveable { mutableStateOf("") }
+    var patchDescription by rememberSaveable { mutableStateOf("") }
 
-    var log by remember { mutableStateOf("") }
-    var logExpanded by remember { mutableStateOf(false) }
-    var showErrorDialog by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf("") }
-    var showSuccessDialog by remember { mutableStateOf(false) }
-    var tempInputFiles by remember { mutableStateOf(listOf<String>()) }
-    var isPatching by remember { mutableStateOf(false) }
+    var log by rememberSaveable { mutableStateOf("") }
+    var logExpanded by rememberSaveable { mutableStateOf(false) }
+    var showErrorDialog by rememberSaveable { mutableStateOf(false) }
+    var errorMessage by rememberSaveable { mutableStateOf("") }
+    var showSuccessDialog by rememberSaveable { mutableStateOf(false) }
+    var isPatching by rememberSaveable { mutableStateOf(false) }
 
     val canApplyPatch by remember {
         derivedStateOf {
@@ -69,12 +71,26 @@ fun DecodeTab() {
         }
     }
 
+    fun clearFile(path: String, isTemp: Boolean, onClear: () -> Unit) {
+        if (isTemp && path.isNotEmpty()) {
+            try {
+                File(path).delete()
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+        onClear()
+    }
+
     val originalFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
             try {
-                if (originalFilePath.isNotEmpty() && tempInputFiles.contains(originalFilePath)) {
-                    File(originalFilePath).delete()
-                    tempInputFiles = tempInputFiles - originalFilePath
+                // Clear previous file if exists
+                clearFile(originalFilePath, originalFileIsTemp) {
+                    originalFilePath = ""
+                    originalFileName = ""
+                    originalFileIsTemp = false
+                    outputFileName = ""
                 }
                 
                 val fileName = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -88,16 +104,15 @@ fun DecodeTab() {
                     // Most likely unused on Android 11+
                     originalFilePath = realPath
                     originalFileName = fileName
-                    
-                    outputFileName = generateOutputFileName(originalFileName, "patched")
+                    originalFileIsTemp = false
+                    outputFileName = generateOutputFileName(fileName, "patched")
                 } else {
                     val tempPath = copyUriToTempFile(context, uri, "original")
                     if (tempPath != null) {
-                                            originalFilePath = tempPath
-                    originalFileName = fileName
-                    tempInputFiles = tempInputFiles + tempPath
-                    
-                    outputFileName = generateOutputFileName(originalFileName, "patched")
+                        originalFilePath = tempPath
+                        originalFileName = fileName
+                        originalFileIsTemp = true
+                        outputFileName = generateOutputFileName(fileName, "patched")
                     } else {
                         scope.launch {
                             errorMessage = "Failed to access selected file"
@@ -119,9 +134,12 @@ fun DecodeTab() {
     ) { uri: Uri? ->
         if (uri != null) {
             try {
-                if (patchFilePath.isNotEmpty() && tempInputFiles.contains(patchFilePath)) {
-                    File(patchFilePath).delete()
-                    tempInputFiles = tempInputFiles - patchFilePath
+                // Clear previous file if exists
+                clearFile(patchFilePath, patchFileIsTemp) {
+                    patchFilePath = ""
+                    patchFileName = ""
+                    patchFileIsTemp = false
+                    patchDescription = ""
                 }
                 
                 val fileName = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -134,6 +152,7 @@ fun DecodeTab() {
                 if (realPath != null) {
                     patchFilePath = realPath
                     patchFileName = fileName
+                    patchFileIsTemp = false
                     
                     if (originalFileName.isNotEmpty()) {
                         outputFileName = generateOutputFileName(originalFileName, "patched")
@@ -151,7 +170,7 @@ fun DecodeTab() {
                     if (tempPath != null) {
                         patchFilePath = tempPath
                         patchFileName = fileName
-                        tempInputFiles = tempInputFiles + tempPath
+                        patchFileIsTemp = true
                         
                         if (originalFileName.isNotEmpty()) {
                             outputFileName = generateOutputFileName(originalFileName, "patched")
@@ -209,8 +228,24 @@ fun DecodeTab() {
             placeholder = { Text("Select original ROM file...") },
             readOnly = true,
             trailingIcon = {
-                IconButton(onClick = { originalFilePicker.launch("*/*") }) {
-                    Icon(Icons.Default.Add, contentDescription = "Select file")
+                Row {
+                    if (originalFileName.isNotEmpty()) {
+                        IconButton(
+                            onClick = { 
+                                clearFile(originalFilePath, originalFileIsTemp) {
+                                    originalFilePath = ""
+                                    originalFileName = ""
+                                    originalFileIsTemp = false
+                                    outputFileName = ""
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear file")
+                        }
+                    }
+                    IconButton(onClick = { originalFilePicker.launch("*/*") }) {
+                        Icon(Icons.Default.Add, contentDescription = "Select file")
+                    }
                 }
             },
             singleLine = true
@@ -224,10 +259,26 @@ fun DecodeTab() {
             placeholder = { Text("Select patch file...") },
             readOnly = true,
             trailingIcon = {
-                IconButton(onClick = { 
-                    patchFilePicker.launch("application/octet-stream")
-                }) {
-                    Icon(Icons.Default.Add, contentDescription = "Select file")
+                Row {
+                    if (patchFileName.isNotEmpty()) {
+                        IconButton(
+                            onClick = { 
+                                clearFile(patchFilePath, patchFileIsTemp) {
+                                    patchFilePath = ""
+                                    patchFileName = ""
+                                    patchFileIsTemp = false
+                                    patchDescription = ""
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear file")
+                        }
+                    }
+                    IconButton(onClick = { 
+                        patchFilePicker.launch("application/octet-stream")
+                    }) {
+                        Icon(Icons.Default.Add, contentDescription = "Select file")
+                    }
                 }
             },
             singleLine = true
@@ -241,8 +292,17 @@ fun DecodeTab() {
             placeholder = { Text("Select output directory...") },
             readOnly = true,
             trailingIcon = {
-                IconButton(onClick = { outputDirPicker.launch(null) }) {
-                    Icon(Icons.Default.Edit, contentDescription = "Select directory")
+                Row {
+                    if (outputDirUri != null) {
+                        IconButton(
+                            onClick = { outputDirUri = null }
+                        ) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear directory")
+                        }
+                    }
+                    IconButton(onClick = { outputDirPicker.launch(null) }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Select directory")
+                    }
                 }
             },
             singleLine = true
@@ -355,8 +415,8 @@ fun DecodeTab() {
                                             }
                                         }
                                         
-                                        tempInputFiles.forEach { File(it).delete() }
-                                        tempInputFiles = emptyList()
+                                        // Clean up temp output file
+                                        tempFile.delete()
                                         
                                         showSuccessDialog = true
                                     } else {
@@ -401,9 +461,6 @@ fun DecodeTab() {
                         log += "Error: ${e.message}\n"
                         errorMessage = "Error: ${e.message}"
                         showErrorDialog = true
-                        
-                        tempInputFiles.forEach { File(it).delete() }
-                        tempInputFiles = emptyList()
                     } finally {
                         isPatching = false
                     }

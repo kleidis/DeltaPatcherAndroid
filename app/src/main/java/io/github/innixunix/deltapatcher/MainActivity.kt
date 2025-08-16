@@ -2,7 +2,7 @@
 
 package io.github.innixunix.deltapatcher
 
-import android.os.Bundle
+import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -13,9 +13,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import android.net.Uri
 import android.content.Context
+import android.os.Bundle
 import android.widget.Toast
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.unit.dp
 import java.io.File
 import io.github.innixunix.deltapatcher.ui.theme.DeltaPatcherTheme
@@ -36,6 +37,7 @@ fun getRealFilePath(context: android.content.Context, uri: Uri): String? {
     if (uri.scheme == "file") return uri.path
     return null
 }
+
 // Copy files to internal app storage in order for xdelta3 to access them
 // This is necessary because xdelta3 cannot access files from external storage or content URIs directly
 fun copyUriToTempFile(context: Context, uri: Uri, prefix: String): String? {
@@ -54,8 +56,8 @@ fun copyUriToTempFile(context: Context, uri: Uri, prefix: String): String? {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeltaPatcherApp() {
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Apply" ,"Create")
+    var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+    val tabs = listOf("Apply", "Create")
     val context = LocalContext.current
 
     Column(modifier = Modifier.fillMaxSize()) {

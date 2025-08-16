@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import android.provider.OpenableColumns
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.launch
 import java.io.File
@@ -39,21 +40,22 @@ fun EncodeTab() {
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
     
-    var originalFilePath by remember { mutableStateOf("") }
-    var originalFileName by remember { mutableStateOf("") }
-    var modifiedFilePath by remember { mutableStateOf("") }
-    var modifiedFileName by remember { mutableStateOf("") }
-    var outputDirUri by remember { mutableStateOf<Uri?>(null) }
-    var outputFileName by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
+    var originalFilePath by rememberSaveable { mutableStateOf("") }
+    var originalFileName by rememberSaveable { mutableStateOf("") }
+    var originalFileIsTemp by rememberSaveable { mutableStateOf(false) }
+    var modifiedFilePath by rememberSaveable { mutableStateOf("") }
+    var modifiedFileName by rememberSaveable { mutableStateOf("") }
+    var modifiedFileIsTemp by rememberSaveable { mutableStateOf(false) }
+    var outputDirUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var outputFileName by rememberSaveable { mutableStateOf("") }
+    var description by rememberSaveable { mutableStateOf("") }
 
-    var log by remember { mutableStateOf("") }
-    var logExpanded by remember { mutableStateOf(false) }
-    var showErrorDialog by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf("") }
-    var showSuccessDialog by remember { mutableStateOf(false) }
-    var tempInputFiles by remember { mutableStateOf(listOf<String>()) }
-    var isCreating by remember { mutableStateOf(false) }
+    var log by rememberSaveable { mutableStateOf("") }
+    var logExpanded by rememberSaveable { mutableStateOf(false) }
+    var showErrorDialog by rememberSaveable { mutableStateOf(false) }
+    var errorMessage by rememberSaveable { mutableStateOf("") }
+    var showSuccessDialog by rememberSaveable { mutableStateOf(false) }
+    var isCreating by rememberSaveable { mutableStateOf(false) }
 
     val canCreatePatch by remember {
         derivedStateOf {
@@ -64,12 +66,25 @@ fun EncodeTab() {
         }
     }
 
+    fun clearFile(path: String, isTemp: Boolean, onClear: () -> Unit) {
+        if (isTemp && path.isNotEmpty()) {
+            try {
+                File(path).delete()
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+        onClear()
+    }
+
     val originalFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
             try {
-                if (originalFilePath.isNotEmpty() && tempInputFiles.contains(originalFilePath)) {
-                    File(originalFilePath).delete()
-                    tempInputFiles = tempInputFiles - originalFilePath
+                clearFile(originalFilePath, originalFileIsTemp) {
+                    originalFilePath = ""
+                    originalFileName = ""
+                    originalFileIsTemp = false
+                    outputFileName = ""
                 }
                 
                 val fileName = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -82,19 +97,20 @@ fun EncodeTab() {
                 if (realPath != null) {
                     originalFilePath = realPath
                     originalFileName = fileName
+                    originalFileIsTemp = false
                     
                     if (modifiedFileName.isNotEmpty()) {
-                        outputFileName = generatePatchFileName(originalFileName, modifiedFileName)
+                        outputFileName = generatePatchFileName(fileName, modifiedFileName)
                     }
                 } else {
                     val tempPath = copyUriToTempFile(context, uri, "original")
                     if (tempPath != null) {
                         originalFilePath = tempPath
                         originalFileName = fileName
-                        tempInputFiles = tempInputFiles + tempPath
+                        originalFileIsTemp = true
                         
                         if (modifiedFileName.isNotEmpty()) {
-                            outputFileName = generatePatchFileName(originalFileName, modifiedFileName)
+                            outputFileName = generatePatchFileName(fileName, modifiedFileName)
                         }
                     } else {
                         scope.launch {
@@ -115,9 +131,11 @@ fun EncodeTab() {
     val modifiedFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
             try {
-                if (modifiedFilePath.isNotEmpty() && tempInputFiles.contains(modifiedFilePath)) {
-                    File(modifiedFilePath).delete()
-                    tempInputFiles = tempInputFiles - modifiedFilePath
+                clearFile(modifiedFilePath, modifiedFileIsTemp) {
+                    modifiedFilePath = ""
+                    modifiedFileName = ""
+                    modifiedFileIsTemp = false
+                    outputFileName = ""
                 }
                 
                 val fileName = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -130,19 +148,20 @@ fun EncodeTab() {
                 if (realPath != null) {
                     modifiedFilePath = realPath
                     modifiedFileName = fileName
+                    modifiedFileIsTemp = false
                     
                     if (originalFileName.isNotEmpty()) {
-                        outputFileName = generatePatchFileName(originalFileName, modifiedFileName)
+                        outputFileName = generatePatchFileName(originalFileName, fileName)
                     }
                 } else {
                     val tempPath = copyUriToTempFile(context, uri, "modified")
                     if (tempPath != null) {
                         modifiedFilePath = tempPath
                         modifiedFileName = fileName
-                        tempInputFiles = tempInputFiles + tempPath
+                        modifiedFileIsTemp = true
                         
                         if (originalFileName.isNotEmpty()) {
-                            outputFileName = generatePatchFileName(originalFileName, modifiedFileName)
+                            outputFileName = generatePatchFileName(originalFileName, fileName)
                         }
                     } else {
                         scope.launch {
@@ -190,8 +209,24 @@ fun EncodeTab() {
             placeholder = { Text("Select original ROM file...") },
             readOnly = true,
             trailingIcon = {
-                IconButton(onClick = { originalFilePicker.launch("*/*") }) {
-                    Icon(Icons.Default.Add, contentDescription = "Select file")
+                Row {
+                    if (originalFileName.isNotEmpty()) {
+                        IconButton(
+                            onClick = { 
+                                clearFile(originalFilePath, originalFileIsTemp) {
+                                    originalFilePath = ""
+                                    originalFileName = ""
+                                    originalFileIsTemp = false
+                                    outputFileName = ""
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear file")
+                        }
+                    }
+                    IconButton(onClick = { originalFilePicker.launch("*/*") }) {
+                        Icon(Icons.Default.Add, contentDescription = "Select file")
+                    }
                 }
             },
             singleLine = true
@@ -205,8 +240,24 @@ fun EncodeTab() {
             placeholder = { Text("Select modified ROM file...") },
             readOnly = true,
             trailingIcon = {
-                IconButton(onClick = { modifiedFilePicker.launch("*/*") }) {
-                    Icon(Icons.Default.Add, contentDescription = "Select file")
+                Row {
+                    if (modifiedFileName.isNotEmpty()) {
+                        IconButton(
+                            onClick = { 
+                                clearFile(modifiedFilePath, modifiedFileIsTemp) {
+                                    modifiedFilePath = ""
+                                    modifiedFileName = ""
+                                    modifiedFileIsTemp = false
+                                    outputFileName = ""
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear file")
+                        }
+                    }
+                    IconButton(onClick = { modifiedFilePicker.launch("*/*") }) {
+                        Icon(Icons.Default.Add, contentDescription = "Select file")
+                    }
                 }
             },
             singleLine = true
@@ -220,8 +271,17 @@ fun EncodeTab() {
             placeholder = { Text("Select output directory...") },
             readOnly = true,
             trailingIcon = {
-                IconButton(onClick = { outputDirPicker.launch(null) }) {
-                    Icon(Icons.Default.Edit, contentDescription = "Select directory")
+                Row {
+                    if (outputDirUri != null) {
+                        IconButton(
+                            onClick = { outputDirUri = null }
+                        ) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear directory")
+                        }
+                    }
+                    IconButton(onClick = { outputDirPicker.launch(null) }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Select directory")
+                    }
                 }
             },
             singleLine = true
@@ -338,8 +398,8 @@ fun EncodeTab() {
                                             }
                                         }
                                         
-                                        tempInputFiles.forEach { File(it).delete() }
-                                        tempInputFiles = emptyList()
+                                        // Clean up temp output file
+                                        tempFile.delete()
                                         
                                         showSuccessDialog = true
                                     } else {
@@ -375,9 +435,6 @@ fun EncodeTab() {
                         log += "Error: ${e.message}\n"
                         errorMessage = "Error: ${e.message}"
                         showErrorDialog = true
-                        
-                        tempInputFiles.forEach { File(it).delete() }
-                        tempInputFiles = emptyList()
                     } finally {
                         isCreating = false
                     }
