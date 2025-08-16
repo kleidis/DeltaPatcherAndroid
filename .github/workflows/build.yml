@@ -1,4 +1,4 @@
-name: Build and Release
+name: DeltaPatcherAndroid build
 
 on:
   push:
@@ -6,6 +6,10 @@ on:
     tags: [ 'v*' ]
   pull_request:
     branches: [ main ]
+
+permissions:
+  contents: write
+  packages: write
 
 jobs:
   build:
@@ -23,9 +27,6 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
     
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-    
     - name: Cache Gradle packages
       uses: actions/cache@v4
       with:
@@ -38,6 +39,10 @@ jobs:
     
     - name: Make gradlew executable
       run: chmod +x ./gradlew
+    
+    - name: Create keystore from base64
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
         
     - name: Build release APK 
       run: ./gradlew assembleRelease
