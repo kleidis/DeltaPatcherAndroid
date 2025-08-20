@@ -38,7 +38,11 @@ fun generatePatchFileName(originalFileName: String, modifiedFileName: String): S
 }
 
 @Composable
-fun EncodeTab(onOperationStateChange: (Boolean) -> Unit = {}) {
+fun EncodeTab(
+    onOperationStateChange: (Boolean) -> Unit = {},
+    onNotificationStart: () -> Unit = {},
+    onNotificationStop: () -> Unit = {}
+) {
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
@@ -202,6 +206,7 @@ fun EncodeTab(onOperationStateChange: (Boolean) -> Unit = {}) {
                 log += "Modified ROM: $modifiedFileName\n"
                 isCreating = true
                 onOperationStateChange(true)
+                onNotificationStart()
             }
 
             val logCallback = object : NativeLibrary.LogCallback {
@@ -265,6 +270,7 @@ fun EncodeTab(onOperationStateChange: (Boolean) -> Unit = {}) {
                                 outputDirUri = null
                                 description = ""
                                 resetStorageCounter()
+                                onNotificationStop()
                             }
                         } else {
                             withContext(Dispatchers.Main) {
@@ -324,6 +330,9 @@ fun EncodeTab(onOperationStateChange: (Boolean) -> Unit = {}) {
         if (uri != null) {
             scope.launch {
                 try {
+                    // Start notification service for file processing
+                    onNotificationStart()
+                    
                     if (originalFilePath.isNotEmpty()) {
                         removeFromStorageCounter(originalFilePath)
                     }
@@ -397,6 +406,9 @@ fun EncodeTab(onOperationStateChange: (Boolean) -> Unit = {}) {
         if (uri != null) {
             scope.launch {
                 try {
+                    // Start notification service for file processing
+                    onNotificationStart()
+                    
                     if (modifiedFilePath.isNotEmpty()) {
                         removeFromStorageCounter(modifiedFilePath)
                     }

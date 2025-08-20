@@ -43,7 +43,11 @@ fun generateOutputFileName(inputFileName: String, suffix: String): String {
 }
 
 @Composable
-fun DecodeTab(onOperationStateChange: (Boolean) -> Unit = {}) {
+fun DecodeTab(
+    onOperationStateChange: (Boolean) -> Unit = {},
+    onNotificationStart: () -> Unit = {},
+    onNotificationStop: () -> Unit = {}
+) {
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
@@ -207,6 +211,7 @@ fun DecodeTab(onOperationStateChange: (Boolean) -> Unit = {}) {
                 log += "Patch file: $patchFileName\n"
                 isPatching = true
                 onOperationStateChange(true)
+                onNotificationStart()
             }
 
             val logCallback = object : NativeLibrary.LogCallback {
@@ -268,6 +273,7 @@ fun DecodeTab(onOperationStateChange: (Boolean) -> Unit = {}) {
                                 outputFileName = ""
                                 outputDirUri = null
                                 resetStorageCounter()
+                                onNotificationStop()
                             }
                         } else {
                             withContext(Dispatchers.Main) {
@@ -335,6 +341,8 @@ fun DecodeTab(onOperationStateChange: (Boolean) -> Unit = {}) {
         if (uri != null) {
             scope.launch {
                 try {
+                    onNotificationStart()
+                    
                     // Clear previous file if exists
                     if (originalFilePath.isNotEmpty()) {
                         removeFromStorageCounter(originalFilePath)
@@ -406,6 +414,8 @@ fun DecodeTab(onOperationStateChange: (Boolean) -> Unit = {}) {
         if (uri != null) {
             scope.launch {
                 try {
+                    onNotificationStart()
+                    
                     if (patchFilePath.isNotEmpty()) {
                         removeFromStorageCounter(patchFilePath)
                     }

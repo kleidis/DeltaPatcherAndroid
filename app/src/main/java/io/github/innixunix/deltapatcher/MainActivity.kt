@@ -6,7 +6,6 @@ import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,43 +21,104 @@ import java.io.File
 import io.github.innixunix.deltapatcher.ui.theme.DeltaPatcherTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import android.os.Build
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.annotation.RequiresApi
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 
 class MainActivity : ComponentActivity() {
+    private var isNotificationServiceRunning = false
+    
+    val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        Toast.makeText(
+            this,
+            if (isGranted) "Notification permission granted" else "Notification permission denied",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestNotificationPermission()
         setContent {
             DeltaPatcherTheme {
-                DeltaPatcherApp()
+                DeltaPatcherApp(this)
             }
         }
     }
     
-    override fun onDestroy() {
-        super.onDestroy()
-        clearCache()
-    }
-    
-    fun clearCache() {
-        try {
-            val cacheDir = cacheDir
-            if (cacheDir.exists()) {
-                cacheDir.listFiles()?.forEach { file ->
-                    try {
-                        if (file.isFile) {
-                            file.delete()
-                        }
-                    } catch (e: Exception) {
-                        // Ignore
-                    }
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {}
+                else -> {
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        NotificationService.stopService(this)
+        isNotificationServiceRunning = false
+    }
+    
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun startNotificationService() {
+        if (!isNotificationServiceRunning &&
+            (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE || !isFinishing && !isDestroyed)) {
+            try {
+                NotificationService.startService(this)
+                isNotificationServiceRunning = true
+            } catch (e: Exception) {
+                isNotificationServiceRunning = false
+            }
+        }
+    }
+    
+    fun stopNotificationService() {
+        try {
+            NotificationService.stopService(this)
+            isNotificationServiceRunning = false
         } catch (e: Exception) {
-            // Ignore
+            isNotificationServiceRunning = false
+        }
+    }
+    
+    fun exitApp() {
+        try {
+            if (isNotificationServiceRunning) {
+                NotificationService.dismissNotification(this)
+                
+                NotificationService.stopService(this)
+                isNotificationServiceRunning = false
+                
+                Thread.sleep(200)
+                
+                FileUtil.clearCache(this)
+            }
+            
+            finish()
+            
+            android.os.Process.killProcess(android.os.Process.myPid())
+            System.exit(0)
+        } catch (e: Exception) {
+            // If graceful exit fails, force exit
+            android.os.Process.killProcess(android.os.Process.myPid())
+            System.exit(0)
         }
     }
 }
-
-
 
 // Just left as a fallback for older Android versions or file URIs
 fun getRealFilePath(context: android.content.Context, uri: Uri): String? {
@@ -115,7 +175,7 @@ suspend fun copyUriToTempFile(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DeltaPatcherApp() {
+fun DeltaPatcherApp(mainActivity: MainActivity) {
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
     val tabs = listOf("Apply", "Create")
     val context = LocalContext.current
@@ -141,6 +201,15 @@ fun DeltaPatcherApp() {
                     Icon(
                         Icons.Default.Settings,
                         contentDescription = "Settings",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                IconButton(
+                    onClick = { mainActivity.exitApp() }
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ExitToApp,
+                        contentDescription = "Exit App",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -184,12 +253,20 @@ fun DeltaPatcherApp() {
         }
         
         when (selectedTabIndex) {
-            0 -> DecodeTab(onOperationStateChange = { isInProgress -> 
-                isAnyOperationInProgress = isInProgress 
-            })
-            1 -> EncodeTab(onOperationStateChange = { isInProgress -> 
-                isAnyOperationInProgress = isInProgress 
-            })
+            0 -> DecodeTab(
+                onOperationStateChange = { isInProgress -> 
+                    isAnyOperationInProgress = isInProgress 
+                },
+                onNotificationStart = { mainActivity.startNotificationService() },
+                onNotificationStop = { mainActivity.stopNotificationService() }
+            )
+            1 -> EncodeTab(
+                onOperationStateChange = { isInProgress -> 
+                    isAnyOperationInProgress = isInProgress 
+                },
+                onNotificationStart = { mainActivity.startNotificationService() },
+                onNotificationStop = { mainActivity.stopNotificationService() }
+            )
         }
     }
 }
