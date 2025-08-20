@@ -27,6 +27,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.documentfile.provider.DocumentFile
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -227,7 +228,11 @@ fun EncodeTab(onOperationStateChange: (Boolean) -> Unit = {}) {
                 logCallback,
                 progressCallback
             )
-            
+
+            withContext(Dispatchers.Main) {
+                delay(100)
+            }
+
             if (result == 0) {
                 try {
                     val tempFile = File(tempOutputPath)
@@ -263,7 +268,8 @@ fun EncodeTab(onOperationStateChange: (Boolean) -> Unit = {}) {
                             }
                         } else {
                             withContext(Dispatchers.Main) {
-                                errorMessage = "Failed to create output file"
+                                log += "Patch creation reported success but no output file was generated\n"
+                                errorMessage = "Patch creation failed - no output file generated.\nThis may indicate an issue with the input files or compression settings."
                                 showErrorDialog = true
                             }
                         }
@@ -481,7 +487,7 @@ fun EncodeTab(onOperationStateChange: (Boolean) -> Unit = {}) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        if (isAnyOperationInProgress) {
+        if (isCopyingOriginal || isCopyingModified) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -673,11 +679,6 @@ fun EncodeTab(onOperationStateChange: (Boolean) -> Unit = {}) {
             enabled = canCreatePatch && !isCreating
         ) {
             if (isCreating) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp
-                )
-                Spacer(modifier = Modifier.width(8.dp))
                 Text("Creating Patch...")
             } else {
                 Text("Create Patch")

@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import kotlinx.coroutines.delay
 
 fun generateOutputFileName(inputFileName: String, suffix: String): String {
     val lastDotIndex = inputFileName.lastIndexOf('.')
@@ -232,6 +233,10 @@ fun DecodeTab(onOperationStateChange: (Boolean) -> Unit = {}) {
                 progressCallback
             )
             
+            withContext(Dispatchers.Main) {
+                delay(100)
+            }
+            
             if (result == 0) {
                 try {
                     val tempFile = File(tempOutputPath)
@@ -266,13 +271,15 @@ fun DecodeTab(onOperationStateChange: (Boolean) -> Unit = {}) {
                             }
                         } else {
                             withContext(Dispatchers.Main) {
-                                errorMessage = "Failed to create output file"
+                                log += "Failed to create output file in selected directory\n"
+                                errorMessage = "Failed to create output file.\nPlease check if you have write permission to the selected directory."
                                 showErrorDialog = true
                             }
                         }
                     } else {
                         withContext(Dispatchers.Main) {
-                            errorMessage = "Patch application failed - no output file generated"
+                            log += "Patch operation reported success but no output file was generated\n"
+                            errorMessage = "Patch operation failed - no output file was generated.\nThis may indicate a file system or permission issue."
                             showErrorDialog = true
                         }
                     }
