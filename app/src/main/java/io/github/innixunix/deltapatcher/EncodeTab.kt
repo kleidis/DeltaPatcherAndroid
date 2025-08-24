@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.documentfile.provider.DocumentFile
+import io.github.innixunix.deltapatcher.ui.settings.SettingsEntries
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -41,7 +42,8 @@ fun generatePatchFileName(originalFileName: String, modifiedFileName: String): S
 fun EncodeTab(
     onOperationStateChange: (Boolean) -> Unit = {},
     onNotificationStart: () -> Unit = {},
-    onNotificationStop: () -> Unit = {}
+    onNotificationStop: () -> Unit = {},
+    settings: SettingsEntries = SettingsEntries(LocalContext.current)
 ) {
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
@@ -216,7 +218,7 @@ fun EncodeTab(
                     }
                 }
             }
-            
+
             val progressCallback = object : NativeLibrary.ProgressCallback {
                 override fun onProgressUpdate(progress: Float, message: String) {
                     scope.launch(Dispatchers.Main) {
@@ -231,8 +233,12 @@ fun EncodeTab(
                 tempOutputPath,
                 description,
                 logCallback,
+                settings.useChecksum,
+                settings.compressionLevel,
+                settings.secondaryCompression,
+                settings.srcWindowSize,
                 progressCallback
-            )
+                )
 
             withContext(Dispatchers.Main) {
                 delay(100)
@@ -362,7 +368,7 @@ fun EncodeTab(
                         isCopyingOriginal = true
                         originalCopyProgress = 0f
                         originalCopyMessage = "Preparing to copy file..."
-                        
+
                         val progressCallback = object : NativeLibrary.ProgressCallback {
                             override fun onProgressUpdate(progress: Float, message: String) {
                                 originalCopyProgress = progress
@@ -438,7 +444,7 @@ fun EncodeTab(
                         isCopyingModified = true
                         modifiedCopyProgress = 0f
                         modifiedCopyMessage = "Preparing to copy file..."
-                        
+
                         val progressCallback = object : NativeLibrary.ProgressCallback {
                             override fun onProgressUpdate(progress: Float, message: String) {
                                 modifiedCopyProgress = progress

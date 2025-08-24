@@ -8,14 +8,13 @@
 
 class XDeltaPatchJNI {
 public:
-    static jint encode(JNIEnv* env, jobject instance,
-                       jstring originalPath, jstring modifiedPath,
-                       jstring outputPath, jstring description,
-                       jobject logCallback);
+    static jint encode(JNIEnv *env, jstring originalPath, jstring modifiedPath, jstring outputPath,
+                       jstring description, jobject logCallback, jboolean useChecksum,
+                       jint compressionLevel, jint secondaryCompression, jint srcWindowSize);
 
     static jint decode(JNIEnv* env, jobject instance,
                        jstring originalPath, jstring outputPath,
-                       jstring patchPath, jobject logCallback);
+                       jstring patchPath, jboolean useChecksum, jobject logCallback);
 
     static std::string getDescription(JNIEnv* env, jobject instance,
                                       jstring patchPath);

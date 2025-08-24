@@ -24,10 +24,9 @@ void XDeltaPatchJNI::sendLogToCallback(JNIEnv* env, jobject logCallback, const s
     }
 }
 
-jint XDeltaPatchJNI::encode(JNIEnv* env, jobject instance,
-                            jstring originalPath, jstring modifiedPath,
-                            jstring outputPath, jstring description,
-                            jobject logCallback) {
+jint XDeltaPatchJNI::encode(JNIEnv *env, jstring originalPath, jstring modifiedPath, jstring outputPath,
+                            jstring description, jobject logCallback, jboolean useChecksum,
+                            jint compressionLevel, jint secondaryCompression, jint srcWindowSize) {
 
     const char* origPath = env->GetStringUTFChars(originalPath, nullptr);
     const char* modPath = env->GetStringUTFChars(modifiedPath, nullptr);
@@ -41,6 +40,18 @@ jint XDeltaPatchJNI::encode(JNIEnv* env, jobject instance,
         if (desc && strlen(desc) > 0) {
             patch.SetDescription(std::string(desc));
         }
+
+        XDeltaConfig& config = patch.GetConfig();
+        config.enableChecksum = static_cast<bool>(useChecksum);
+        config.compressionLevel = static_cast<int>(compressionLevel);
+        config.secondaryCompression = static_cast<int>(secondaryCompression);
+        
+        if (srcWindowSize == 0) {
+            config.srcWindowSize = XDeltaConfig::SRC_WINDOW_SIZE_AUTO;
+        } else {
+            config.srcWindowSize = XDeltaConfig::SrcWindowSizes[srcWindowSize - 1];
+        }
+
 
         std::string message;
         int result = patch.Encode(origPath, modPath, message);
@@ -72,7 +83,7 @@ jint XDeltaPatchJNI::encode(JNIEnv* env, jobject instance,
 
 jint XDeltaPatchJNI::decode(JNIEnv* env, jobject instance,
                             jstring originalPath, jstring outputPath,
-                            jstring patchPath, jobject logCallback) {
+                            jstring patchPath, jboolean useChecksum, jobject logCallback) {
 
     const char* origPath = env->GetStringUTFChars(originalPath, nullptr);
     const char* outPath = env->GetStringUTFChars(outputPath, nullptr);
@@ -80,6 +91,9 @@ jint XDeltaPatchJNI::decode(JNIEnv* env, jobject instance,
 
     try {
         XDeltaPatch patch(patchP, XDeltaPatch::Read);
+
+        XDeltaConfig& config = patch.GetConfig();
+        config.enableChecksum = static_cast<bool>(useChecksum);
 
         std::string message;
         int result = patch.Decode(origPath, outPath, message);
@@ -124,20 +138,23 @@ std::string XDeltaPatchJNI::getDescription(JNIEnv* env, jobject instance, jstrin
 
 extern "C"
 JNIEXPORT jint JNICALL Java_io_github_innixunix_deltapatcher_NativeLibrary_00024Companion_encode(
-    JNIEnv* env, jobject thiz,
-    jstring originalPath, jstring modifiedPath,
-    jstring outputPath, jstring description,
-    jobject logCallback
+        JNIEnv* env, jobject thiz,
+        jstring originalPath, jstring modifiedPath,
+        jstring outputPath, jstring description,
+        jobject logCallback, jboolean useChecksum,
+        jint compressionLevel, jint secondaryCompression, jint srcWindowSize
 ) {
-    return XDeltaPatchJNI::encode(env, thiz, originalPath, modifiedPath, outputPath, description, logCallback);
+    return XDeltaPatchJNI::encode(env, originalPath, modifiedPath, outputPath, description,
+                                  logCallback, useChecksum, compressionLevel,
+                                  secondaryCompression, srcWindowSize);
 }
 
 extern "C"
 JNIEXPORT jint JNICALL Java_io_github_innixunix_deltapatcher_NativeLibrary_00024Companion_decode(
-    JNIEnv* env, jobject thiz, 
-    jstring originalPath, jstring outputPath, jstring patchPath, jobject logCallback
+    JNIEnv* env, jobject thiz,
+    jstring originalPath, jstring outputPath, jstring patchPath, jboolean useChecksum, jobject logCallback
 ) {
-    return XDeltaPatchJNI::decode(env, thiz, originalPath, outputPath, patchPath, logCallback);
+    return XDeltaPatchJNI::decode(env, thiz, originalPath, outputPath, patchPath, useChecksum, logCallback);
 }
 
 extern "C"

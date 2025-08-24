@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import io.github.innixunix.deltapatcher.ui.settings.SettingsEntries
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -32,12 +33,15 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun DeltaPatcherTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = true, 
     content: @Composable () -> Unit
 ) {
+    val context = LocalContext.current
+    val settingsEntries = SettingsEntries(context)
+    val useDynamicColor = dynamicColor && settingsEntries.useMonet
+    
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
+        useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
 

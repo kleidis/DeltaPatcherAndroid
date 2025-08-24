@@ -29,10 +29,18 @@ import androidx.core.content.ContextCompat
 import androidx.annotation.RequiresApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.graphics.Color
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.ui.Alignment
+import io.github.innixunix.deltapatcher.ui.settings.SettingsEntries
+import io.github.innixunix.deltapatcher.ui.settings.SettingsMenu
 
 class MainActivity : ComponentActivity() {
     private var isNotificationServiceRunning = false
-    
+
     val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
@@ -47,8 +55,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         requestNotificationPermission()
         setContent {
-            DeltaPatcherTheme {
-                DeltaPatcherApp(this)
+            val settingsEntries = remember { SettingsEntries(this) }
+            key(settingsEntries.useMonet) {
+                DeltaPatcherTheme {
+                    DeltaPatcherApp(this)
+                }
             }
         }
     }
@@ -177,41 +188,67 @@ suspend fun copyUriToTempFile(
 @Composable
 fun DeltaPatcherApp(mainActivity: MainActivity) {
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+    var showSettingsMenu by remember { mutableStateOf(false) }
+    val settingsEntries = SettingsEntries(LocalContext.current)
     val tabs = listOf("Apply", "Create")
     val context = LocalContext.current
     var isAnyOperationInProgress by rememberSaveable { mutableStateOf(false) }
+
+    BackHandler(enabled = showSettingsMenu) {
+        showSettingsMenu = false
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
             title = { 
                 Text(
-                    "Delta Patcher",
+                    if (showSettingsMenu) "Settings" else "Delta Patcher",
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
-                ) 
+                )
+            },
+            navigationIcon = {
+                if (showSettingsMenu) {
+                    IconButton(
+                        onClick = { showSettingsMenu = false }
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             },
             actions = {
-                IconButton(
-                    onClick = {
-                        // TODO: Implement settings
-                        Toast.makeText(context, "To be implemented", Toast.LENGTH_SHORT).show()
+                if (!showSettingsMenu) {
+                    IconButton(
+                        onClick = {
+                            if (!isAnyOperationInProgress) {
+                                showSettingsMenu = true
+                            }
+                        },
+                        enabled = !isAnyOperationInProgress
+                    ) {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = if (isAnyOperationInProgress) 
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            else 
+                                MaterialTheme.colorScheme.primary
+                        )
                     }
-                ) {
-                    Icon(
-                        Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                IconButton(
-                    onClick = { mainActivity.exitApp() }
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ExitToApp,
-                        contentDescription = "Exit App",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    IconButton(
+                        onClick = { mainActivity.exitApp() }
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ExitToApp,
+                            contentDescription = "Exit App",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -221,52 +258,90 @@ fun DeltaPatcherApp(mainActivity: MainActivity) {
             )
         )
         
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            tabs.forEachIndexed { index, title ->
-                TextButton(
-                    onClick = { 
-                        if (!isAnyOperationInProgress) {
-                            selectedTabIndex = index 
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = !isAnyOperationInProgress,
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = if (selectedTabIndex == index) 
-                            MaterialTheme.colorScheme.primary 
-                        else 
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                ) {
-                    Text(
-                        title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+        if (!showSettingsMenu) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    TextButton(
+                        onClick = { 
+                            if (!isAnyOperationInProgress) {
+                                selectedTabIndex = index 
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        enabled = !isAnyOperationInProgress,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = if (selectedTabIndex == index) 
+                                MaterialTheme.colorScheme.primary 
+                            else 
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Text(
+                            title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
-        
-        when (selectedTabIndex) {
-            0 -> DecodeTab(
-                onOperationStateChange = { isInProgress -> 
-                    isAnyOperationInProgress = isInProgress 
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            AnimatedContent(
+                targetState = showSettingsMenu,
+                transitionSpec = {
+                    if (targetState) {
+                        slideInHorizontally(
+                            initialOffsetX = { fullWidth -> fullWidth },
+                            animationSpec = tween(300)
+                        ) togetherWith slideOutHorizontally(
+                            targetOffsetX = { fullWidth -> -fullWidth },
+                            animationSpec = tween(300)
+                        )
+                    } else {
+                        slideInHorizontally(
+                            initialOffsetX = { fullWidth -> -fullWidth },
+                            animationSpec = tween(300)
+                        ) togetherWith slideOutHorizontally(
+                            targetOffsetX = { fullWidth -> fullWidth },
+                            animationSpec = tween(300)
+                        )
+                    }
                 },
-                onNotificationStart = { mainActivity.startNotificationService() },
-                onNotificationStop = { mainActivity.stopNotificationService() }
-            )
-            1 -> EncodeTab(
-                onOperationStateChange = { isInProgress -> 
-                    isAnyOperationInProgress = isInProgress 
-                },
-                onNotificationStart = { mainActivity.startNotificationService() },
-                onNotificationStop = { mainActivity.stopNotificationService() }
-            )
+                label = "settings_transition"
+            ) { isInSettings ->
+                if (isInSettings) {
+                    SettingsMenu(
+                        onMonetToggle = {
+                            mainActivity.recreate()
+                        }
+                    )
+                } else {
+                    when (selectedTabIndex) {
+                        0 -> DecodeTab(
+                            onOperationStateChange = { isInProgress -> 
+                                isAnyOperationInProgress = isInProgress 
+                            },
+                            onNotificationStart = { mainActivity.startNotificationService() },
+                            onNotificationStop = { mainActivity.stopNotificationService() },
+                            settingsEntries
+                        )
+                        1 -> EncodeTab(
+                            onOperationStateChange = { isInProgress -> 
+                                isAnyOperationInProgress = isInProgress 
+                            },
+                            onNotificationStart = { mainActivity.startNotificationService() },
+                            onNotificationStop = { mainActivity.stopNotificationService() },
+                            settingsEntries
+                        )
+                    }
+                }
+            }
         }
     }
 }

@@ -20,11 +20,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import android.provider.OpenableColumns
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.documentfile.provider.DocumentFile
+import io.github.innixunix.deltapatcher.ui.settings.SettingsEntries
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -46,7 +46,8 @@ fun generateOutputFileName(inputFileName: String, suffix: String): String {
 fun DecodeTab(
     onOperationStateChange: (Boolean) -> Unit = {},
     onNotificationStart: () -> Unit = {},
-    onNotificationStop: () -> Unit = {}
+    onNotificationStop: () -> Unit = {},
+    settings: SettingsEntries = SettingsEntries(LocalContext.current)
 ) {
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
@@ -234,6 +235,7 @@ fun DecodeTab(
                 originalFilePath,
                 tempOutputPath,
                 patchFilePath,
+                settings.useChecksum,
                 logCallback,
                 progressCallback
             )
