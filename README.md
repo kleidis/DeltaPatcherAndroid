@@ -1,4 +1,7 @@
-# Delta Patcher Android [![GitHub all releases](https://img.shields.io/github/downloads/OWNER/REPO/total.svg?style=flat-square)](https://github.com/innixunix/DeltaPatcherAndroid/releases)
+# Delta Patcher Android
+![CI Build Status](https://github.com/innixunix/DeltaPatcherAndroid/actions/workflows/build.yml/badge.svg)
+![GitHub Downloads](https://img.shields.io/github/downloads/innixunix/DeltaPatcherAndroid/total?logo=github&label=GitHub%20Downloads) 
+<a href="https://www.buymeacoffee.com/innixunix" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="30" width="130"></a>
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/b752635a-7281-4de6-956c-9e0cd78552c5" 
@@ -30,10 +33,6 @@ Thanks to marco-calautti for the original implantation  which was heavily used b
   - If the app's cache builds up, just do one of the above or clear it manually.## Building
 
 ## Building
-> [!NOTE]  
-> We are looking for someone to create a proper app icon for this project.  
-> If you're interested, submit an issue with the **"Icon"** tag and your design.  
-> Preferably it should be a **512x512 SVG**.
 
 #### Clone the Repository
 ```bash
@@ -49,10 +48,3 @@ cd DeltaPatcherAndroid
 
 #### Build 
 Build → Make Project (Ctrl+F9)
-
-
-## What's left to do:
-
-- Add a settings page with ability to chnage some patch creation settings and UI settings
-- Have an app icon
-- More detailed testing
