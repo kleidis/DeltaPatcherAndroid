@@ -1,7 +1,7 @@
 # Delta Patcher Android
 ![CI Build Status](https://github.com/innixunix/DeltaPatcherAndroid/actions/workflows/build.yml/badge.svg)
 ![GitHub Downloads](https://img.shields.io/github/downloads/innixunix/DeltaPatcherAndroid/total?logo=github&label=GitHub%20Downloads) 
-<a href="https://www.buymeacoffee.com/innixunix" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="30" width="130"></a>
+<a href="https://www.buymeacoffee.com/nixynx" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="30" width="130"></a>
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/b752635a-7281-4de6-956c-9e0cd78552c5" 
