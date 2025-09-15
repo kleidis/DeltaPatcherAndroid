@@ -29,7 +29,8 @@ fun SettingsMenu(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(bottom = 80.dp)
     ) {
         item {
             SettingsSectionHeader("Theme Settings")
@@ -88,6 +89,43 @@ fun SettingsMenu(
                 options = SettingsEntries.SRC_WINDOW_SIZES,
                 selectedValue = settingsManager.srcWindowSize,
                 onValueChange = { settingsManager.updateSrcWindowSize(it) }
+            )
+        }
+
+        item {
+            ThanksToCard()
+        }
+    }
+}
+
+@Composable
+fun ThanksToCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            Text(
+                text = "Thanks to Contributors",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Text(
+                text = "• NyxYnx - Android port / frontend creator\n" +
+                      "• marco-calautti - Original PC tool creator\n" +
+                      "• xdelta3 developers\n",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                lineHeight = MaterialTheme.typography.bodyMedium.lineHeight * 1.2
             )
         }
     }
@@ -245,4 +283,3 @@ fun SettingsRadioGroup(
         }
     }
 }
-
