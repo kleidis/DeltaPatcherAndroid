@@ -137,7 +137,7 @@ std::string XDeltaPatchJNI::getDescription(JNIEnv* env, jobject instance, jstrin
 }
 
 extern "C"
-JNIEXPORT jint JNICALL Java_io_github_innixunix_deltapatcher_NativeLibrary_00024Companion_encode(
+JNIEXPORT jint JNICALL Java_io_github_nyxynx_deltapatcher_NativeLibrary_00024Companion_encode(
         JNIEnv* env, jobject thiz,
         jstring originalPath, jstring modifiedPath,
         jstring outputPath, jstring description,
@@ -150,7 +150,7 @@ JNIEXPORT jint JNICALL Java_io_github_innixunix_deltapatcher_NativeLibrary_00024
 }
 
 extern "C"
-JNIEXPORT jint JNICALL Java_io_github_innixunix_deltapatcher_NativeLibrary_00024Companion_decode(
+JNIEXPORT jint JNICALL Java_io_github_nyxynx_deltapatcher_NativeLibrary_00024Companion_decode(
     JNIEnv* env, jobject thiz,
     jstring originalPath, jstring outputPath, jstring patchPath, jboolean useChecksum, jobject logCallback
 ) {
@@ -158,7 +158,7 @@ JNIEXPORT jint JNICALL Java_io_github_innixunix_deltapatcher_NativeLibrary_00024
 }
 
 extern "C"
-JNIEXPORT jstring JNICALL Java_io_github_innixunix_deltapatcher_NativeLibrary_00024Companion_getDescription(
+JNIEXPORT jstring JNICALL Java_io_github_nyxynx_deltapatcher_NativeLibrary_00024Companion_getDescription(
     JNIEnv* env, jobject thiz,
     jstring patchPath
 ) {
