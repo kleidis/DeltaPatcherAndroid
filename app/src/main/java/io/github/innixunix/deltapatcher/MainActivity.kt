@@ -31,12 +31,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.activity.compose.BackHandler
-import androidx.compose.ui.graphics.Color
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.ui.Alignment
 import io.github.innixunix.deltapatcher.ui.settings.SettingsEntries
 import io.github.innixunix.deltapatcher.ui.settings.SettingsMenu
+import io.github.innixunix.deltapatcher.ui.tabs.DecodeTab
+import io.github.innixunix.deltapatcher.ui.tabs.EncodeTab
+import io.github.innixunix.deltapatcher.utils.FileUtil
+import io.github.innixunix.deltapatcher.utils.NotificationService
 
 class MainActivity : ComponentActivity() {
     private var isNotificationServiceRunning = false
@@ -50,7 +52,7 @@ class MainActivity : ComponentActivity() {
             Toast.LENGTH_SHORT
         ).show()
     }
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestNotificationPermission()
@@ -191,7 +193,6 @@ fun DeltaPatcherApp(mainActivity: MainActivity) {
     var showSettingsMenu by remember { mutableStateOf(false) }
     val settingsEntries = SettingsEntries(LocalContext.current)
     val tabs = listOf("Apply", "Create")
-    val context = LocalContext.current
     var isAnyOperationInProgress by rememberSaveable { mutableStateOf(false) }
 
     BackHandler(enabled = showSettingsMenu) {
@@ -324,16 +325,16 @@ fun DeltaPatcherApp(mainActivity: MainActivity) {
                 } else {
                     when (selectedTabIndex) {
                         0 -> DecodeTab(
-                            onOperationStateChange = { isInProgress -> 
-                                isAnyOperationInProgress = isInProgress 
+                            onOperationStateChange = { isInProgress ->
+                                isAnyOperationInProgress = isInProgress
                             },
                             onNotificationStart = { mainActivity.startNotificationService() },
                             onNotificationStop = { mainActivity.stopNotificationService() },
                             settingsEntries
                         )
                         1 -> EncodeTab(
-                            onOperationStateChange = { isInProgress -> 
-                                isAnyOperationInProgress = isInProgress 
+                            onOperationStateChange = { isInProgress ->
+                                isAnyOperationInProgress = isInProgress
                             },
                             onNotificationStart = { mainActivity.startNotificationService() },
                             onNotificationStop = { mainActivity.stopNotificationService() },

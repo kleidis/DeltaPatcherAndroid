@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import io.github.innixunix.deltapatcher.ui.settings.SettingsEntries
 
 private val DarkColorScheme = darkColorScheme(
@@ -52,8 +53,14 @@ fun DeltaPatcherTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.surface.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val windowInsetsController = WindowCompat.getInsetsController(window, view)
+                windowInsetsController.isAppearanceLightStatusBars = !darkTheme
+            } else {
+                @Suppress("DEPRECATION")
+                window.statusBarColor = colorScheme.surface.toArgb()
+                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            }
         }
     }
 

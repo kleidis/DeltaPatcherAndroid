@@ -1,29 +1,33 @@
-// Copyright (C) 2025 Innixunix
+package io.github.innixunix.deltapatcher.utils
 
-package io.github.innixunix.deltapatcher
-
-import android.app.*
+import android.R
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.os.Binder
-import android.os.IBinder
-import androidx.core.app.NotificationCompat
-import android.content.Context
 import android.os.Build
+import android.os.IBinder
+import android.os.Process
 import androidx.annotation.RequiresApi
+import androidx.core.app.NotificationCompat
 
 class NotificationService : Service() {
     private val binder = LocalBinder()
-    
+
     companion object {
         const val NOTIFICATION_ID = 1001
         const val CHANNEL_ID = "delta_patcher_channel"
         const val CHANNEL_NAME = "Delta Patcher"
-        
+
         fun dismissNotification(context: Context) {
             val notificationManager = context.getSystemService(NotificationManager::class.java)
             notificationManager?.cancel(NOTIFICATION_ID)
         }
-        
+
         @RequiresApi(Build.VERSION_CODES.O)
         fun startService(context: Context) {
             try {
@@ -47,7 +51,7 @@ class NotificationService : Service() {
                 }
             }
         }
-        
+
         fun stopService(context: Context) {
             try {
                 val intent = Intent(context, NotificationService::class.java)
@@ -58,26 +62,26 @@ class NotificationService : Service() {
         }
     }
 
-    
+
     inner class LocalBinder : Binder() {
         fun getService(): NotificationService = this@NotificationService
     }
-    
+
     override fun onBind(intent: Intent): IBinder {
         return binder
     }
-    
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
     }
-    
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "EXIT_APP") {
             exitApp()
             return START_NOT_STICKY
         }
-        
+
         try {
             val notification = createNotification()
             startForeground(NOTIFICATION_ID, notification)
@@ -93,23 +97,28 @@ class NotificationService : Service() {
         }
         return START_STICKY
     }
-    
+
     override fun onDestroy() {
         super.onDestroy()
         try {
-            stopForeground(true)
-            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager?.cancel(NOTIFICATION_ID)
-            
+
             FileUtil.clearCache(this)
         } catch (e: Exception) {
             FileUtil.clearCache(this)
         }
     }
-    
+
     private fun createNotificationChannel() {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 CHANNEL_NAME,
@@ -118,12 +127,12 @@ class NotificationService : Service() {
                 description = "Shows when Delta Patcher is running in the background"
                 setShowBadge(false)
             }
-            
+
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(channel)
         }
     }
-    
+
     private fun createNotification(): Notification {
         val exitIntent = Intent(this, NotificationService::class.java).apply {
             action = "EXIT_APP"
@@ -132,13 +141,13 @@ class NotificationService : Service() {
             this, 1, exitIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Delta Patcher")
             .setContentText("is running...")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_dialog_info)
             .addAction(
-                android.R.drawable.ic_menu_close_clear_cancel,
+                R.drawable.ic_menu_close_clear_cancel,
                 "Exit",
                 exitPendingIntent
             )
@@ -147,17 +156,17 @@ class NotificationService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
     }
-    
+
     fun updateNotification(message: String) {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Delta Patcher")
             .setContentText(message)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.ic_dialog_info)
             .setOngoing(true)
             .setAutoCancel(false)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
-        
+
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
@@ -167,7 +176,7 @@ class NotificationService : Service() {
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager?.cancel(NOTIFICATION_ID)
         stopSelf()
-        android.os.Process.killProcess(android.os.Process.myPid())
+        Process.killProcess(Process.myPid())
         System.exit(0)
     }
 }

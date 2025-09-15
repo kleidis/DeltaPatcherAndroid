@@ -25,7 +25,7 @@
         android:requestLegacyExternalStorage="true">
         
         <service
-            android:name=".NotificationService"
+            android:name=".utils.NotificationService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
