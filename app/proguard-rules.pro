@@ -20,12 +20,12 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
--keep class io.github.innixunix.deltapatcher.NativeLibrary { *; }
--keep class io.github.innixunix.deltapatcher.NativeLibrary$Companion { *; }
--keep interface io.github.innixunix.deltapatcher.NativeLibrary$LogCallback { *; }
+-keep class io.github.nyxynx.deltapatcher.NativeLibrary { *; }
+-keep class io.github.nyxynx.deltapatcher.NativeLibrary$Companion { *; }
+-keep interface io.github.nyxynx.deltapatcher.NativeLibrary$LogCallback { *; }
 
--keepclassmembers class io.github.innixunix.deltapatcher.NativeLibrary {
-    public static int encode(java.lang.String, java.lang.String, java.lang.String, java.lang.String, io.github.innixunix.deltapatcher.NativeLibrary$LogCallback);
-    public static int decode(java.lang.String, java.lang.String, java.lang.String, io.github.innixunix.deltapatcher.NativeLibrary$LogCallback);
+-keepclassmembers class io.github.nyxynx.deltapatcher.NativeLibrary {
+    public static int encode(java.lang.String, java.lang.String, java.lang.String, java.lang.String, io.github.nyxynx.deltapatcher.NativeLibrary$LogCallback);
+    public static int decode(java.lang.String, java.lang.String, java.lang.String, io.github.nyxynx.deltapatcher.NativeLibrary$LogCallback);
     public static java.lang.String getDescription(java.lang.String);
 }

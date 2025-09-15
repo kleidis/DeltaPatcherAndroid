@@ -1,6 +1,6 @@
-// Copyright (C) 2025 Innixunix
+// Copyright (C) 2025 nyxynx
 
-package io.github.innixunix.deltapatcher.ui.tabs
+package io.github.nyxynx.deltapatcher.ui.tabs
 
 import android.content.res.Configuration
 import android.net.Uri
@@ -23,21 +23,21 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import io.github.innixunix.deltapatcher.copyUriToTempFile
-import io.github.innixunix.deltapatcher.getRealFilePath
-import io.github.innixunix.deltapatcher.utils.FileUtil.addToStorageCounter
-import io.github.innixunix.deltapatcher.utils.FileUtil.checkStorageSpace
-import io.github.innixunix.deltapatcher.utils.FileUtil.clearFile
-import io.github.innixunix.deltapatcher.utils.FileUtil.removeFromStorageCounter
-import io.github.innixunix.deltapatcher.utils.FileUtil.resetStorageCounter
-import io.github.innixunix.deltapatcher.ui.dialogs.DialogAction
-import io.github.innixunix.deltapatcher.ui.dialogs.DialogType
-import io.github.innixunix.deltapatcher.ui.dialogs.PopUpMessageDialog
-import io.github.innixunix.deltapatcher.ui.settings.SettingsEntries
-import io.github.innixunix.deltapatcher.utils.FileUtil
-import io.github.innixunix.deltapatcher.utils.PatchOperationParams
-import io.github.innixunix.deltapatcher.utils.PatchOperationType
-import io.github.innixunix.deltapatcher.utils.executeUnifiedPatchOperation
+import io.github.nyxynx.deltapatcher.copyUriToTempFile
+import io.github.nyxynx.deltapatcher.getRealFilePath
+import io.github.nyxynx.deltapatcher.utils.FileUtil.addToStorageCounter
+import io.github.nyxynx.deltapatcher.utils.FileUtil.checkStorageSpace
+import io.github.nyxynx.deltapatcher.utils.FileUtil.clearFile
+import io.github.nyxynx.deltapatcher.utils.FileUtil.removeFromStorageCounter
+import io.github.nyxynx.deltapatcher.utils.FileUtil.resetStorageCounter
+import io.github.nyxynx.deltapatcher.ui.dialogs.DialogAction
+import io.github.nyxynx.deltapatcher.ui.dialogs.DialogType
+import io.github.nyxynx.deltapatcher.ui.dialogs.PopUpMessageDialog
+import io.github.nyxynx.deltapatcher.ui.settings.SettingsEntries
+import io.github.nyxynx.deltapatcher.utils.FileUtil
+import io.github.nyxynx.deltapatcher.utils.PatchOperationParams
+import io.github.nyxynx.deltapatcher.utils.PatchOperationType
+import io.github.nyxynx.deltapatcher.utils.executeUnifiedPatchOperation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -74,7 +74,7 @@ fun EncodeTab(
     var errorMessage by rememberSaveable { mutableStateOf("") }
     var showSuccessDialog by rememberSaveable { mutableStateOf(false) }
     var isCreating by rememberSaveable { mutableStateOf(false) }
-    
+
     var isCopyingOriginal by rememberSaveable { mutableStateOf(false) }
     var originalCopyProgress by rememberSaveable { mutableFloatStateOf(0f) }
     var originalCopyMessage by rememberSaveable { mutableStateOf("") }
@@ -84,12 +84,12 @@ fun EncodeTab(
 
     var totalStorageRequired by rememberSaveable { mutableLongStateOf(0L) }
     var showStorageWarning by rememberSaveable { mutableStateOf(false) }
-    
+
     val canCreatePatch by remember {
         derivedStateOf {
-            originalFilePath.isNotEmpty() && 
-            modifiedFilePath.isNotEmpty() && 
-            outputDirUri != null && 
+            originalFilePath.isNotEmpty() &&
+            modifiedFilePath.isNotEmpty() &&
+            outputDirUri != null &&
             outputFileName.isNotBlank()
         }
     }
@@ -260,7 +260,7 @@ fun EncodeTab(
                 Row {
                     if (originalFileName.isNotEmpty()) {
                         IconButton(
-                            onClick = { 
+                            onClick = {
                                 clearFile(originalFilePath, originalFileIsTemp) {
                                     originalFilePath = ""
                                     originalFileName = ""
@@ -279,7 +279,7 @@ fun EncodeTab(
             },
             singleLine = true
         )
-        
+
         if (isCopyingOriginal) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -309,7 +309,7 @@ fun EncodeTab(
                 Row {
                     if (modifiedFileName.isNotEmpty()) {
                         IconButton(
-                            onClick = { 
+                            onClick = {
                                 clearFile(modifiedFilePath, modifiedFileIsTemp) {
                                     modifiedFilePath = ""
                                     modifiedFileName = ""
@@ -328,7 +328,7 @@ fun EncodeTab(
             },
             singleLine = true
         )
-        
+
         if (isCopyingModified) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -370,7 +370,7 @@ fun EncodeTab(
             },
             singleLine = true
         )
-        
+
         OutlinedTextField(
             value = outputFileName,
             onValueChange = { outputFileName = it },
@@ -385,7 +385,7 @@ fun EncodeTab(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             singleLine = true
         )
-        
+
         OutlinedTextField(
             value = description,
             onValueChange = { description = it },
@@ -402,7 +402,7 @@ fun EncodeTab(
             maxLines = 4,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
         )
-        
+
         Button(
             onClick = {
                 scope.launch(Dispatchers.IO) {
@@ -417,7 +417,7 @@ fun EncodeTab(
                 Text("Create Patch")
             }
         }
-        
+
         OutlinedCard(
             onClick = { logExpanded = !logExpanded }
         ) {
@@ -443,7 +443,7 @@ fun EncodeTab(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                
+
                 AnimatedVisibility(
                     visible = logExpanded,
                     enter = expandVertically() + fadeIn(),

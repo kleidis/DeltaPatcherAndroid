@@ -1,6 +1,6 @@
-// Copyright (C) 2025 Innixunix
+// Copyright (C) 2025 nyxynx
 
-package io.github.innixunix.deltapatcher
+package io.github.nyxynx.deltapatcher
 
 import android.net.Uri
 import androidx.activity.ComponentActivity
@@ -18,7 +18,7 @@ import android.widget.Toast
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.unit.dp
 import java.io.File
-import io.github.innixunix.deltapatcher.ui.theme.DeltaPatcherTheme
+import io.github.nyxynx.deltapatcher.ui.theme.DeltaPatcherTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import android.os.Build
@@ -33,12 +33,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import io.github.innixunix.deltapatcher.ui.settings.SettingsEntries
-import io.github.innixunix.deltapatcher.ui.settings.SettingsMenu
-import io.github.innixunix.deltapatcher.ui.tabs.DecodeTab
-import io.github.innixunix.deltapatcher.ui.tabs.EncodeTab
-import io.github.innixunix.deltapatcher.utils.FileUtil
-import io.github.innixunix.deltapatcher.utils.NotificationService
+import io.github.nyxynx.deltapatcher.ui.settings.SettingsEntries
+import io.github.nyxynx.deltapatcher.ui.settings.SettingsMenu
+import io.github.nyxynx.deltapatcher.ui.tabs.DecodeTab
+import io.github.nyxynx.deltapatcher.ui.tabs.EncodeTab
+import io.github.nyxynx.deltapatcher.utils.FileUtil
+import io.github.nyxynx.deltapatcher.utils.NotificationService
 
 class MainActivity : ComponentActivity() {
     private var isNotificationServiceRunning = false
@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    
+
     private fun requestNotificationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             when {
@@ -85,7 +85,7 @@ class MainActivity : ComponentActivity() {
         NotificationService.stopService(this)
         isNotificationServiceRunning = false
     }
-    
+
     @RequiresApi(Build.VERSION_CODES.O)
     fun startNotificationService() {
         if (!isNotificationServiceRunning &&
@@ -98,7 +98,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    
+
     fun stopNotificationService() {
         try {
             NotificationService.stopService(this)
@@ -107,22 +107,22 @@ class MainActivity : ComponentActivity() {
             isNotificationServiceRunning = false
         }
     }
-    
+
     fun exitApp() {
         try {
             if (isNotificationServiceRunning) {
                 NotificationService.dismissNotification(this)
-                
+
                 NotificationService.stopService(this)
                 isNotificationServiceRunning = false
-                
+
                 Thread.sleep(200)
-                
+
                 FileUtil.clearCache(this)
             }
-            
+
             finish()
-            
+
             android.os.Process.killProcess(android.os.Process.myPid())
             System.exit(0)
         } catch (e: Exception) {
@@ -142,31 +142,31 @@ fun getRealFilePath(context: android.content.Context, uri: Uri): String? {
 // Copy files to internal app storage in order for xdelta3 to access them
 // This is necessary because xdelta3 cannot access files from external storage or content URIs directly
 suspend fun copyUriToTempFile(
-    context: Context, 
-    uri: Uri, 
-    prefix: String, 
+    context: Context,
+    uri: Uri,
+    prefix: String,
     progressCallback: NativeLibrary.ProgressCallback? = null
 ): String? = withContext(Dispatchers.IO) {
     try {
         val inputStream = context.contentResolver.openInputStream(uri) ?: return@withContext null
-        
+
         val fileSize = context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.SIZE), null, null, null)?.use { cursor ->
             cursor.moveToFirst()
             cursor.getLong(0)
         } ?: 0L
-        
+
         val tempFile = File.createTempFile(prefix, null, context.cacheDir)
-        
+
         if (fileSize > 0) {
             var bytesRead = 0L
             val buffer = ByteArray(8192)
-            
+
             tempFile.outputStream().use { outputStream ->
                 var read: Int
                 while (inputStream.read(buffer).also { read = it } != -1) {
                     outputStream.write(buffer, 0, read)
                     bytesRead += read
-                    
+
                     val progress = (bytesRead.toFloat() / fileSize).coerceIn(0f, 1f)
                     progressCallback?.onProgressUpdate(progress, "Copying file... ${(progress * 100).toInt()}%")
                 }
@@ -178,7 +178,7 @@ suspend fun copyUriToTempFile(
             }
             progressCallback?.onProgressUpdate(1f, "File copied successfully")
         }
-        
+
         tempFile.absolutePath
     } catch (e: Exception) {
         progressCallback?.onProgressUpdate(0f, "Error: ${e.message}")
@@ -201,7 +201,7 @@ fun DeltaPatcherApp(mainActivity: MainActivity) {
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { 
+            title = {
                 Text(
                     if (showSettingsMenu) "Settings" else "Delta Patcher",
                     style = MaterialTheme.typography.titleLarge,
@@ -235,9 +235,9 @@ fun DeltaPatcherApp(mainActivity: MainActivity) {
                         Icon(
                             Icons.Default.Settings,
                             contentDescription = "Settings",
-                            tint = if (isAnyOperationInProgress) 
+                            tint = if (isAnyOperationInProgress)
                                 MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            else 
+                            else
                                 MaterialTheme.colorScheme.primary
                         )
                     }
@@ -258,7 +258,7 @@ fun DeltaPatcherApp(mainActivity: MainActivity) {
                 actionIconContentColor = MaterialTheme.colorScheme.primary
             )
         )
-        
+
         if (!showSettingsMenu) {
             Row(
                 modifier = Modifier
@@ -268,17 +268,17 @@ fun DeltaPatcherApp(mainActivity: MainActivity) {
             ) {
                 tabs.forEachIndexed { index, title ->
                     TextButton(
-                        onClick = { 
+                        onClick = {
                             if (!isAnyOperationInProgress) {
-                                selectedTabIndex = index 
+                                selectedTabIndex = index
                             }
                         },
                         modifier = Modifier.weight(1f),
                         enabled = !isAnyOperationInProgress,
                         colors = ButtonDefaults.textButtonColors(
-                            contentColor = if (selectedTabIndex == index) 
-                                MaterialTheme.colorScheme.primary 
-                            else 
+                            contentColor = if (selectedTabIndex == index)
+                                MaterialTheme.colorScheme.primary
+                            else
                                 MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     ) {

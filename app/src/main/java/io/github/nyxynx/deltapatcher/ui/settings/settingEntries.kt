@@ -1,7 +1,7 @@
-// Copyright (C) 2025 Innixunix
+// Copyright (C) 2025 nyxynx
 
 
-package io.github.innixunix.deltapatcher.ui.settings
+package io.github.nyxynx.deltapatcher.ui.settings
 
 import android.content.Context
 import android.content.SharedPreferences

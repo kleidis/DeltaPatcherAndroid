@@ -1,4 +1,4 @@
-package io.github.innixunix.deltapatcher
+package io.github.nyxynx.deltapatcher
 
 class NativeLibrary {
     companion object {
@@ -34,7 +34,7 @@ class NativeLibrary {
     interface LogCallback {
         fun onLogUpdate(message: String)
     }
-    
+
     interface ProgressCallback {
         fun onProgressUpdate(progress: Float, message: String)
     }

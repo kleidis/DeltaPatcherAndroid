@@ -1,4 +1,4 @@
-package io.github.innixunix.deltapatcher.utils
+package io.github.nyxynx.deltapatcher.utils
 
 import android.R
 import android.app.Notification

@@ -1,6 +1,6 @@
-// Copyright (C) 2025 Innixunix
+// Copyright (C) 2025 nyxynx
 
-package io.github.innixunix.deltapatcher.ui.theme
+package io.github.nyxynx.deltapatcher.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

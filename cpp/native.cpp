@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Innixunix
+// Copyright (C) 2025 nyxynx
 
 #include <jni.h>
 #include "native.h"
@@ -36,7 +36,7 @@ jint XDeltaPatchJNI::encode(JNIEnv *env, jstring originalPath, jstring modifiedP
     try {
         // Create the XDeltaPatch with the output path where patch will be written
         XDeltaPatch patch(outPath, XDeltaPatch::Write);
-        
+
         if (desc && strlen(desc) > 0) {
             patch.SetDescription(std::string(desc));
         }
@@ -45,7 +45,7 @@ jint XDeltaPatchJNI::encode(JNIEnv *env, jstring originalPath, jstring modifiedP
         config.enableChecksum = static_cast<bool>(useChecksum);
         config.compressionLevel = static_cast<int>(compressionLevel);
         config.secondaryCompression = static_cast<int>(secondaryCompression);
-        
+
         if (srcWindowSize == 0) {
             config.srcWindowSize = XDeltaConfig::SRC_WINDOW_SIZE_AUTO;
         } else {
@@ -68,15 +68,15 @@ jint XDeltaPatchJNI::encode(JNIEnv *env, jstring originalPath, jstring modifiedP
         env->ReleaseStringUTFChars(description, desc);
 
         return result;
-        
+
     } catch (const std::exception& e) {
         sendLogToCallback(env, logCallback, "Error: " + std::string(e.what()));
-        
+
         env->ReleaseStringUTFChars(originalPath, origPath);
         env->ReleaseStringUTFChars(modifiedPath, modPath);
         env->ReleaseStringUTFChars(outputPath, outPath);
         env->ReleaseStringUTFChars(description, desc);
-        
+
         return -1;
     }
 }
@@ -109,26 +109,26 @@ jint XDeltaPatchJNI::decode(JNIEnv* env, jobject instance,
         env->ReleaseStringUTFChars(patchPath, patchP);
 
         return result;
-        
+
     } catch (const std::exception& e) {
         env->ReleaseStringUTFChars(originalPath, origPath);
         env->ReleaseStringUTFChars(outputPath, outPath);
         env->ReleaseStringUTFChars(patchPath, patchP);
-        
+
         return -1;
     }
 }
 
 std::string XDeltaPatchJNI::getDescription(JNIEnv* env, jobject instance, jstring patchPath) {
     const char* patchP = env->GetStringUTFChars(patchPath, nullptr);
-    
+
     try {
         XDeltaPatch patch(patchP, XDeltaPatch::Read);
         std::string desc = patch.GetDescription();
-        
+
         env->ReleaseStringUTFChars(patchPath, patchP);
         return desc;
-        
+
     } catch (const std::exception& e) {
         LOGE("Exception in getDescription: %s", e.what());
         env->ReleaseStringUTFChars(patchPath, patchP);
@@ -159,7 +159,7 @@ JNIEXPORT jint JNICALL Java_io_github_innixunix_deltapatcher_NativeLibrary_00024
 
 extern "C"
 JNIEXPORT jstring JNICALL Java_io_github_innixunix_deltapatcher_NativeLibrary_00024Companion_getDescription(
-    JNIEnv* env, jobject thiz, 
+    JNIEnv* env, jobject thiz,
     jstring patchPath
 ) {
     std::string desc = XDeltaPatchJNI::getDescription(env, thiz, patchPath);

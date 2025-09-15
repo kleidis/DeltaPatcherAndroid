@@ -6,18 +6,18 @@ plugins {
 }
 
 android {
-    namespace = "io.github.innixunix.deltapatcher"
+    namespace = "io.github.nyxynx.deltapatcher"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "io.github.innixunix.deltapatcher"
+        applicationId = "io.github.nyxynx.deltapatcher"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        
+
         ndk {
             abiFilters += listOf("arm64-v8a")
         }
@@ -41,7 +41,7 @@ android {
             versionNameSuffix = "-debug"
         }
     }
-    
+
     if (keystoreFile != null) {
         buildTypes {
             release {

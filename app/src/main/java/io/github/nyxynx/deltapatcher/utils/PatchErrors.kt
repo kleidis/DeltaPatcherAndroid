@@ -1,10 +1,12 @@
-package io.github.innixunix.deltapatcher.utils
+// Copyright (C) 2025 nyxynx
+
+package io.github.nyxynx.deltapatcher.utils
 
 import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
-import io.github.innixunix.deltapatcher.NativeLibrary
-import io.github.innixunix.deltapatcher.ui.settings.SettingsEntries
+import io.github.nyxynx.deltapatcher.NativeLibrary
+import io.github.nyxynx.deltapatcher.ui.settings.SettingsEntries
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay

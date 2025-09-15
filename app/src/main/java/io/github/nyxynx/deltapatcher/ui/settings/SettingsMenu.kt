@@ -1,6 +1,6 @@
-// Copyright (C) 2025 Innixunix
+// Copyright (C) 2025 nyxynx
 
-package io.github.innixunix.deltapatcher.ui.settings
+package io.github.nyxynx.deltapatcher.ui.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,13 +34,13 @@ fun SettingsMenu(
         item {
             SettingsSectionHeader("Theme Settings")
         }
-        
+
         item {
             SettingsSwitch(
                 title = "Use Material You",
                 description = "Use dynamic colors based on your wallpaper",
                 checked = settingsManager.useMonet,
-                onCheckedChange = { 
+                onCheckedChange = {
                     settingsManager.updateUseMonet(it)
                     onMonetToggle()
                 }

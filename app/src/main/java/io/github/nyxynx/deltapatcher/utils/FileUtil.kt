@@ -1,4 +1,4 @@
-package io.github.innixunix.deltapatcher.utils
+package io.github.nyxynx.deltapatcher.utils
 
 import android.content.Context
 import android.net.Uri
@@ -13,7 +13,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import io.github.innixunix.deltapatcher.NativeLibrary
+import io.github.nyxynx.deltapatcher.NativeLibrary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

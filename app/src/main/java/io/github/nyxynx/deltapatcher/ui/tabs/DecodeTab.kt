@@ -1,6 +1,6 @@
-// Copyright (C) 2025 Innixunix
+// Copyright (C) 2025 nyxynx
 
-package io.github.innixunix.deltapatcher.ui.tabs
+package io.github.nyxynx.deltapatcher.ui.tabs
 
 import android.content.Context
 import android.content.res.Configuration
@@ -63,23 +63,23 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import io.github.innixunix.deltapatcher.copyUriToTempFile
-import io.github.innixunix.deltapatcher.getRealFilePath
-import io.github.innixunix.deltapatcher.utils.FileUtil.addToStorageCounter
-import io.github.innixunix.deltapatcher.utils.FileUtil.checkStorageSpace
-import io.github.innixunix.deltapatcher.utils.FileUtil.clearFile
-import io.github.innixunix.deltapatcher.utils.FileUtil.generateOutputFileName
-import io.github.innixunix.deltapatcher.utils.FileUtil.removeFromStorageCounter
-import io.github.innixunix.deltapatcher.utils.FileUtil.resetStorageCounter
-import io.github.innixunix.deltapatcher.utils.FileUtil.totalStorageRequired
-import io.github.innixunix.deltapatcher.ui.dialogs.DialogAction
-import io.github.innixunix.deltapatcher.ui.dialogs.DialogType
-import io.github.innixunix.deltapatcher.ui.dialogs.PopUpMessageDialog
-import io.github.innixunix.deltapatcher.ui.settings.SettingsEntries
-import io.github.innixunix.deltapatcher.utils.FileUtil
-import io.github.innixunix.deltapatcher.utils.PatchOperationParams
-import io.github.innixunix.deltapatcher.utils.PatchOperationType
-import io.github.innixunix.deltapatcher.utils.executeUnifiedPatchOperation
+import io.github.nyxynx.deltapatcher.copyUriToTempFile
+import io.github.nyxynx.deltapatcher.getRealFilePath
+import io.github.nyxynx.deltapatcher.utils.FileUtil.addToStorageCounter
+import io.github.nyxynx.deltapatcher.utils.FileUtil.checkStorageSpace
+import io.github.nyxynx.deltapatcher.utils.FileUtil.clearFile
+import io.github.nyxynx.deltapatcher.utils.FileUtil.generateOutputFileName
+import io.github.nyxynx.deltapatcher.utils.FileUtil.removeFromStorageCounter
+import io.github.nyxynx.deltapatcher.utils.FileUtil.resetStorageCounter
+import io.github.nyxynx.deltapatcher.utils.FileUtil.totalStorageRequired
+import io.github.nyxynx.deltapatcher.ui.dialogs.DialogAction
+import io.github.nyxynx.deltapatcher.ui.dialogs.DialogType
+import io.github.nyxynx.deltapatcher.ui.dialogs.PopUpMessageDialog
+import io.github.nyxynx.deltapatcher.ui.settings.SettingsEntries
+import io.github.nyxynx.deltapatcher.utils.FileUtil
+import io.github.nyxynx.deltapatcher.utils.PatchOperationParams
+import io.github.nyxynx.deltapatcher.utils.PatchOperationType
+import io.github.nyxynx.deltapatcher.utils.executeUnifiedPatchOperation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 

@@ -1,4 +1,4 @@
-// Copyright (C) 2025 Innixunix
+// Copyright (C) 2025 nyxynx
 
 #pragma once
 
