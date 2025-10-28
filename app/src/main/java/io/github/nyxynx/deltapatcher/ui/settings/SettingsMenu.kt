@@ -162,12 +162,15 @@ fun SettingsSwitch(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 12.dp)
             ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(bottom = 2.dp)
                 )
                 Text(
                     text = description,
@@ -176,9 +179,11 @@ fun SettingsSwitch(
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
+            // Add extra spacing so the toggle sits further to the right like Android 16 settings
             Switch(
                 checked = checked,
-                onCheckedChange = onCheckedChange
+                onCheckedChange = onCheckedChange,
+                modifier = Modifier.padding(start = 12.dp)
             )
         }
     }
