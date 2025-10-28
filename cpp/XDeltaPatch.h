@@ -15,7 +15,7 @@
 //Source code and contact information can be found at
 //https://github.com/marco-calautti
 
-//Copyright (C) 2025 nyxynx
+//Copyright (C) 2025 kleidis
 //Adapted for Android
 
 #ifndef __XDELTA_PATCH__

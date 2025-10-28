@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "io.github.nyxynx.deltapatcher"
+    namespace = "io.github.kleidis.deltapatcher"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "io.github.nyxynx.deltapatcher"
+        applicationId = "io.github.kleidis.deltapatcher"
         minSdk = 24
         targetSdk = 36
         versionCode = 1

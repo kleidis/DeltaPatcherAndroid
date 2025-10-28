@@ -1,4 +1,6 @@
-package io.github.nyxynx.deltapatcher.ui.pages
+// Copyright (C) 2025 kleidis
+
+package io.github.kleidis.deltapatcher.ui.pages
 
 import android.Manifest
 import android.content.Context
@@ -29,7 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import io.github.nyxynx.deltapatcher.R
+import io.github.kleidis.deltapatcher.R
 
 enum class SetupPageState {
     Incomplete,

@@ -1,7 +1,7 @@
-// Copyright (C) 2025 nyxynx
+// Copyright (C) 2025 kleidis
 
 
-package io.github.nyxynx.deltapatcher.ui.settings
+package io.github.kleidis.deltapatcher.ui.settings
 
 import android.content.Context
 import android.content.SharedPreferences

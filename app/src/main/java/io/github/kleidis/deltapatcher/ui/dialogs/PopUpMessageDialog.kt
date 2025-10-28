@@ -1,6 +1,6 @@
-// Copyright (C) 2025 nyxynx
+// Copyright (C) 2025 kleidis
 
-package io.github.nyxynx.deltapatcher.ui.dialogs
+package io.github.kleidis.deltapatcher.ui.dialogs
 
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable

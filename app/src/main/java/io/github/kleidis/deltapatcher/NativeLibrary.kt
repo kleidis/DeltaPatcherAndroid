@@ -1,4 +1,4 @@
-package io.github.nyxynx.deltapatcher
+package io.github.kleidis.deltapatcher
 
 class NativeLibrary {
     companion object {

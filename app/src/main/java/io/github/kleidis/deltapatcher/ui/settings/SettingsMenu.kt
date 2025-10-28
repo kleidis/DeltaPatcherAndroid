@@ -1,6 +1,6 @@
-// Copyright (C) 2025 nyxynx
+// Copyright (C) 2025 kleidis
 
-package io.github.nyxynx.deltapatcher.ui.settings
+package io.github.kleidis.deltapatcher.ui.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -120,7 +120,7 @@ fun ThanksToCard() {
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             Text(
-                text = "• NyxYnx - Android port / frontend creator\n" +
+                text = "• Kleidis - Android port / frontend creator\n" +
                       "• marco-calautti - Original PC tool creator\n" +
                       "• xdelta3 developers\n",
                 style = MaterialTheme.typography.bodyMedium,

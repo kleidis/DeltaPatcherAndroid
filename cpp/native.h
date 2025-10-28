@@ -1,4 +1,4 @@
-// Copyright (C) 2025 nyxynx
+// Copyright (C) 2025 kleidis
 
 #pragma once
 

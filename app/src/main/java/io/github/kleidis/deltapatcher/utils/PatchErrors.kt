@@ -1,12 +1,12 @@
-// Copyright (C) 2025 nyxynx
+// Copyright (C) 2025 kleidis
 
-package io.github.nyxynx.deltapatcher.utils
+package io.github.kleidis.deltapatcher.utils
 
 import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
-import io.github.nyxynx.deltapatcher.NativeLibrary
-import io.github.nyxynx.deltapatcher.ui.settings.SettingsEntries
+import io.github.kleidis.deltapatcher.NativeLibrary
+import io.github.kleidis.deltapatcher.ui.settings.SettingsEntries
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay

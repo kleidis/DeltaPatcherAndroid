@@ -1,6 +1,6 @@
-// Copyright (C) 2025 nyxynx
+// Copyright (C) 2025 kleidis
 
-package io.github.nyxynx.deltapatcher.ui.theme
+package io.github.kleidis.deltapatcher.ui.theme
 
 import android.app.Activity
 import android.os.Build
@@ -17,7 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import io.github.nyxynx.deltapatcher.ui.settings.SettingsEntries
+import io.github.kleidis.deltapatcher.ui.settings.SettingsEntries
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,

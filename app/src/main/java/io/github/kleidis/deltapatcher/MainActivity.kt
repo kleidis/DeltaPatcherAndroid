@@ -1,6 +1,6 @@
-// Copyright (C) 2025 nyxynx
+// Copyright (C) 2025 kleidis
 
-package io.github.nyxynx.deltapatcher
+package io.github.kleidis.deltapatcher
 
 import android.net.Uri
 import androidx.activity.ComponentActivity
@@ -18,7 +18,7 @@ import android.widget.Toast
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.unit.dp
 import java.io.File
-import io.github.nyxynx.deltapatcher.ui.theme.DeltaPatcherTheme
+import io.github.kleidis.deltapatcher.ui.theme.DeltaPatcherTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import android.os.Build
@@ -29,13 +29,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import io.github.nyxynx.deltapatcher.ui.settings.SettingsEntries
-import io.github.nyxynx.deltapatcher.ui.settings.SettingsMenu
-import io.github.nyxynx.deltapatcher.ui.pages.FirstTimeSetup
-import io.github.nyxynx.deltapatcher.ui.tabs.DecodeTab
-import io.github.nyxynx.deltapatcher.ui.tabs.EncodeTab
-import io.github.nyxynx.deltapatcher.utils.FileUtil
-import io.github.nyxynx.deltapatcher.utils.NotificationService
+import io.github.kleidis.deltapatcher.ui.settings.SettingsEntries
+import io.github.kleidis.deltapatcher.ui.settings.SettingsMenu
+import io.github.kleidis.deltapatcher.ui.pages.FirstTimeSetup
+import io.github.kleidis.deltapatcher.ui.tabs.DecodeTab
+import io.github.kleidis.deltapatcher.ui.tabs.EncodeTab
+import io.github.kleidis.deltapatcher.utils.FileUtil
+import io.github.kleidis.deltapatcher.utils.NotificationService
 
 class MainActivity : ComponentActivity() {
     private var isNotificationServiceRunning = false

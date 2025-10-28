@@ -1,6 +1,6 @@
-// Copyright (C) 2025 nyxynx
+// Copyright (C) 2025 kleidis
 
-package io.github.nyxynx.deltapatcher.ui.theme
+package io.github.kleidis.deltapatcher.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

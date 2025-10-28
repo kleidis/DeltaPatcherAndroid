@@ -1,19 +1,59 @@
-// Copyright (C) 2025 nyxynx
+// Copyright (C) 2025 kleidis
 
-package io.github.nyxynx.deltapatcher.ui.tabs
+package io.github.kleidis.deltapatcher.ui.tabs
 
+import android.content.Context
 import android.content.res.Configuration
 import android.net.Uri
-import androidx.compose.animation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
@@ -23,78 +63,80 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import io.github.nyxynx.deltapatcher.copyUriToTempFile
-import io.github.nyxynx.deltapatcher.getRealFilePath
-import io.github.nyxynx.deltapatcher.utils.FileUtil.addToStorageCounter
-import io.github.nyxynx.deltapatcher.utils.FileUtil.checkStorageSpace
-import io.github.nyxynx.deltapatcher.utils.FileUtil.clearFile
-import io.github.nyxynx.deltapatcher.utils.FileUtil.removeFromStorageCounter
-import io.github.nyxynx.deltapatcher.utils.FileUtil.resetStorageCounter
-import io.github.nyxynx.deltapatcher.ui.dialogs.DialogAction
-import io.github.nyxynx.deltapatcher.ui.dialogs.DialogType
-import io.github.nyxynx.deltapatcher.ui.dialogs.PopUpMessageDialog
-import io.github.nyxynx.deltapatcher.ui.settings.SettingsEntries
-import io.github.nyxynx.deltapatcher.utils.FileUtil
-import io.github.nyxynx.deltapatcher.utils.PatchOperationParams
-import io.github.nyxynx.deltapatcher.utils.PatchOperationType
-import io.github.nyxynx.deltapatcher.utils.executeUnifiedPatchOperation
+import io.github.kleidis.deltapatcher.copyUriToTempFile
+import io.github.kleidis.deltapatcher.getRealFilePath
+import io.github.kleidis.deltapatcher.utils.FileUtil.addToStorageCounter
+import io.github.kleidis.deltapatcher.utils.FileUtil.checkStorageSpace
+import io.github.kleidis.deltapatcher.utils.FileUtil.clearFile
+import io.github.kleidis.deltapatcher.utils.FileUtil.generateOutputFileName
+import io.github.kleidis.deltapatcher.utils.FileUtil.removeFromStorageCounter
+import io.github.kleidis.deltapatcher.utils.FileUtil.resetStorageCounter
+import io.github.kleidis.deltapatcher.utils.FileUtil.totalStorageRequired
+import io.github.kleidis.deltapatcher.ui.dialogs.DialogAction
+import io.github.kleidis.deltapatcher.ui.dialogs.DialogType
+import io.github.kleidis.deltapatcher.ui.dialogs.PopUpMessageDialog
+import io.github.kleidis.deltapatcher.ui.settings.SettingsEntries
+import io.github.kleidis.deltapatcher.utils.FileUtil
+import io.github.kleidis.deltapatcher.utils.PatchOperationParams
+import io.github.kleidis.deltapatcher.utils.PatchOperationType
+import io.github.kleidis.deltapatcher.utils.executeUnifiedPatchOperation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-fun generatePatchFileName(originalFileName: String, modifiedFileName: String): String {
-    val originalName = originalFileName.substringBeforeLast('.')
-    val modifiedName = modifiedFileName.substringBeforeLast('.')
-    return "${originalName}_to_${modifiedName}.xdelta"
-}
 
 @Composable
-fun EncodeTab(
+fun DecodeTab(
     onOperationStateChange: (Boolean) -> Unit = {},
     onNotificationStart: () -> Unit = {},
     onNotificationStop: () -> Unit = {},
-    settings: SettingsEntries = SettingsEntries(LocalContext.current)
+    settings: SettingsEntries = SettingsEntries(LocalContext.current),
+    context: Context = LocalContext.current
 ) {
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
-    val context = LocalContext.current
 
     var originalFilePath by rememberSaveable { mutableStateOf("") }
     var originalFileName by rememberSaveable { mutableStateOf("") }
     var originalFileIsTemp by rememberSaveable { mutableStateOf(false) }
-    var modifiedFilePath by rememberSaveable { mutableStateOf("") }
-    var modifiedFileName by rememberSaveable { mutableStateOf("") }
-    var modifiedFileIsTemp by rememberSaveable { mutableStateOf(false) }
+    var patchFilePath by rememberSaveable { mutableStateOf("") }
+    var patchFileName by rememberSaveable { mutableStateOf("") }
+    var patchFileIsTemp by rememberSaveable { mutableStateOf(false) }
     var outputDirUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var outputFileName by rememberSaveable { mutableStateOf("") }
-    var description by rememberSaveable { mutableStateOf("") }
+    var patchDescription by rememberSaveable { mutableStateOf("") }
 
     var log by rememberSaveable { mutableStateOf("") }
     var logExpanded by rememberSaveable { mutableStateOf(false) }
     var showErrorDialog by rememberSaveable { mutableStateOf(false) }
     var errorMessage by rememberSaveable { mutableStateOf("") }
     var showSuccessDialog by rememberSaveable { mutableStateOf(false) }
-    var isCreating by rememberSaveable { mutableStateOf(false) }
+    var isPatching by rememberSaveable { mutableStateOf(false) }
 
     var isCopyingOriginal by rememberSaveable { mutableStateOf(false) }
     var originalCopyProgress by rememberSaveable { mutableFloatStateOf(0f) }
     var originalCopyMessage by rememberSaveable { mutableStateOf("") }
-    var isCopyingModified by rememberSaveable { mutableStateOf(false) }
-    var modifiedCopyProgress by rememberSaveable { mutableFloatStateOf(0f) }
-    var modifiedCopyMessage by rememberSaveable { mutableStateOf("") }
+    var isCopyingPatch by rememberSaveable { mutableStateOf(false) }
+    var patchCopyProgress by rememberSaveable { mutableFloatStateOf(0f) }
+    var patchCopyMessage by rememberSaveable { mutableStateOf("") }
 
-    var totalStorageRequired by rememberSaveable { mutableLongStateOf(0L) }
-    var showStorageWarning by rememberSaveable { mutableStateOf(false) }
-
-    val canCreatePatch by remember {
+    val canApplyPatch by remember {
         derivedStateOf {
             originalFilePath.isNotEmpty() &&
-            modifiedFilePath.isNotEmpty() &&
+            patchFilePath.isNotEmpty() &&
             outputDirUri != null &&
             outputFileName.isNotBlank()
         }
     }
 
-    suspend fun createPatch() {
+    val isAnyOperationInProgress by remember {
+        derivedStateOf {
+            isCopyingOriginal || isCopyingPatch
+        }
+    }
+
+    var showStorageWarning by rememberSaveable { mutableStateOf(false) }
+
+    suspend fun applyPatch() {
         try {
             if (!checkStorageSpace(context)) {
                 showStorageWarning = true
@@ -102,14 +144,14 @@ fun EncodeTab(
             }
 
             val patch = PatchOperationParams(
-                operationType = PatchOperationType.ENCODE,
+                operationType = PatchOperationType.DECODE,
                 originalFilePath = originalFilePath,
                 originalFileName = originalFileName,
-                secondaryFilePath = modifiedFilePath,
-                secondaryFileName = modifiedFileName,
+                secondaryFilePath = patchFilePath,
+                secondaryFileName = patchFileName,
                 outputDirUri = outputDirUri!!,
                 outputFileName = outputFileName,
-                description = description,
+                description = "", // Not used for decode
                 settings = settings,
                 context = context,
                 onLogUpdate = { message -> log += message },
@@ -122,12 +164,11 @@ fun EncodeTab(
                     originalFilePath = ""
                     originalFileName = ""
                     originalFileIsTemp = false
-                    modifiedFilePath = ""
-                    modifiedFileName = ""
-                    modifiedFileIsTemp = false
+                    patchFilePath = ""
+                    patchFileName = ""
+                    patchFileIsTemp = false
                     outputFileName = ""
                     outputDirUri = null
-                    description = ""
                     resetStorageCounter()
                 },
                 onError = { message ->
@@ -136,13 +177,13 @@ fun EncodeTab(
                 }
             )
 
-            isCreating = true
+            isPatching = true
             executeUnifiedPatchOperation(patch)
         } catch (e: Exception) {
             errorMessage = "Error: ${e.message}"
             showErrorDialog = true
         } finally {
-            isCreating = false
+            isPatching = false
         }
     }
 
@@ -154,6 +195,7 @@ fun EncodeTab(
             originalFileName = fileName
             originalFileIsTemp = isTemp
         },
+        onOutputFileNameChanged = { outputFileName = it },
         onNotificationStart = onNotificationStart,
         onError = { message ->
             errorMessage = message
@@ -169,36 +211,38 @@ fun EncodeTab(
         copyUriToTempFile = ::copyUriToTempFile,
         addToStorageCounter = ::addToStorageCounter,
         getRealFilePath = ::getRealFilePath,
+        generateOutputFileName = ::generateOutputFileName,
         filePrefix = "original"
     )
 
-    val modifiedFilePicker = FileUtil.filePicker(
-        originalFilePath = modifiedFilePath,
-        originalFileIsTemp = modifiedFileIsTemp,
+    val patchFilePicker = FileUtil.filePicker(
+        originalFilePath = patchFilePath,
+        originalFileIsTemp = patchFileIsTemp,
         otherFileName = originalFileName,
         onFileSelected = { filePath, fileName, isTemp ->
-            modifiedFilePath = filePath
-            modifiedFileName = fileName
-            modifiedFileIsTemp = isTemp
+            patchFilePath = filePath
+            patchFileName = fileName
+            patchFileIsTemp = isTemp
         },
+        onPatchDescriptionChanged = { patchDescription = it },
         onOutputFileNameChanged = { outputFileName = it },
         onNotificationStart = onNotificationStart,
         onError = { message ->
             errorMessage = message
             showErrorDialog = true
         },
-        onCopyingStateChanged = { isCopyingModified = it },
+        onCopyingStateChanged = { isCopyingPatch = it },
         onCopyProgress = { progress, message ->
-            modifiedCopyProgress = progress
-            modifiedCopyMessage = message
+            patchCopyProgress = progress
+            patchCopyMessage = message
         },
         removeFromStorageCounter = ::removeFromStorageCounter,
         clearFile = ::clearFile,
         copyUriToTempFile = ::copyUriToTempFile,
         addToStorageCounter = ::addToStorageCounter,
         getRealFilePath = ::getRealFilePath,
-        generatePatchFileName = ::generatePatchFileName,
-        filePrefix = "modified"
+        generateOutputFileName = ::generateOutputFileName,
+        filePrefix = "patch"
     )
 
     val outputDirPicker = FileUtil.rememberDirectoryPicker { uri ->
@@ -220,7 +264,7 @@ fun EncodeTab(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        if (isCopyingOriginal || isCopyingModified) {
+        if (isAnyOperationInProgress) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -248,7 +292,6 @@ fun EncodeTab(
                 }
             }
         }
-
         OutlinedTextField(
             value = originalFileName,
             onValueChange = { },
@@ -299,29 +342,31 @@ fun EncodeTab(
         }
 
         OutlinedTextField(
-            value = modifiedFileName,
+            value = patchFileName,
             onValueChange = { },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Modified ROM File") },
-            placeholder = { Text("Select modified ROM file...") },
+            label = { Text("Patch File (.xdelta)") },
+            placeholder = { Text("Select patch file...") },
             readOnly = true,
             trailingIcon = {
                 Row {
-                    if (modifiedFileName.isNotEmpty()) {
+                    if (patchFileName.isNotEmpty()) {
                         IconButton(
                             onClick = {
-                                clearFile(modifiedFilePath, modifiedFileIsTemp) {
-                                    modifiedFilePath = ""
-                                    modifiedFileName = ""
-                                    modifiedFileIsTemp = false
-                                    outputFileName = ""
+                                clearFile(patchFilePath, patchFileIsTemp) {
+                                    patchFilePath = ""
+                                    patchFileName = ""
+                                    patchFileIsTemp = false
+                                    patchDescription = ""
                                 }
                             }
                         ) {
                             Icon(Icons.Default.Clear, contentDescription = "Clear file")
                         }
                     }
-                    IconButton(onClick = { modifiedFilePicker.launch("*/*") }) {
+                    IconButton(onClick = {
+                        patchFilePicker.launch("application/octet-stream")
+                    }) {
                         Icon(Icons.Default.Add, contentDescription = "Select file")
                     }
                 }
@@ -329,18 +374,18 @@ fun EncodeTab(
             singleLine = true
         )
 
-        if (isCopyingModified) {
+        if (isCopyingPatch) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 LinearProgressIndicator(
-                    progress = { modifiedCopyProgress },
+                    progress = { patchCopyProgress },
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = modifiedCopyMessage,
+                    text = patchCopyMessage,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -381,40 +426,41 @@ fun EncodeTab(
                         focusManager.clearFocus()
                     }
                 },
-            label = { Text("Output Patch File Name") },
+            label = { Text("Output ROM File Name") },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             singleLine = true
         )
 
+        // read-only, shows patch info
         OutlinedTextField(
-            value = description,
-            onValueChange = { description = it },
+            value = patchDescription,
+            onValueChange = { },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(100.dp)
-                .onFocusChanged { focusState ->
-                    if (!focusState.isFocused) {
-                        focusManager.clearFocus()
-                    }
-                },
-            label = { Text("Patch Description (optional)") },
-            placeholder = { Text("Describe what this patch does...") },
-            maxLines = 4,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
+                .height(100.dp),
+            label = { Text("Patch Description") },
+            placeholder = { Text("Select a patch file to see description... (If available)") },
+            readOnly = true,
+            maxLines = 4
         )
 
         Button(
             onClick = {
                 scope.launch(Dispatchers.IO) {
-                    createPatch()
+                    applyPatch()
                 }
             },
-            enabled = canCreatePatch && !isCreating
+            enabled = canApplyPatch && !isPatching
         ) {
-            if (isCreating) {
-                Text("Creating Patch...")
+            if (isPatching) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Applying Patch...")
             } else {
-                Text("Create Patch")
+                Text("Apply Patch")
             }
         }
 
@@ -492,7 +538,7 @@ fun EncodeTab(
         primaryAction = DialogAction("Continue") {
             showStorageWarning = false
             scope.launch {
-                createPatch()
+                applyPatch()
             }
         },
         secondaryAction = DialogAction("Cancel") {
@@ -504,7 +550,7 @@ fun EncodeTab(
         isVisible = showSuccessDialog,
         dialogType = DialogType.SUCCESS,
         title = "Success",
-        message = "Patch created successfully!",
+        message = "Patch applied successfully!",
         onDismiss = { showSuccessDialog = false }
     )
 }
