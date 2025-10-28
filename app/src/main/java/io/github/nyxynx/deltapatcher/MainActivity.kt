@@ -22,10 +22,6 @@ import io.github.nyxynx.deltapatcher.ui.theme.DeltaPatcherTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import android.os.Build
-import android.Manifest
-import android.content.pm.PackageManager
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
 import androidx.annotation.RequiresApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
@@ -35,6 +31,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import io.github.nyxynx.deltapatcher.ui.settings.SettingsEntries
 import io.github.nyxynx.deltapatcher.ui.settings.SettingsMenu
+import io.github.nyxynx.deltapatcher.ui.pages.FirstTimeSetup
 import io.github.nyxynx.deltapatcher.ui.tabs.DecodeTab
 import io.github.nyxynx.deltapatcher.ui.tabs.EncodeTab
 import io.github.nyxynx.deltapatcher.utils.FileUtil
@@ -43,38 +40,13 @@ import io.github.nyxynx.deltapatcher.utils.NotificationService
 class MainActivity : ComponentActivity() {
     private var isNotificationServiceRunning = false
 
-    val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        Toast.makeText(
-            this,
-            if (isGranted) "Notification permission granted" else "Notification permission denied",
-            Toast.LENGTH_SHORT
-        ).show()
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requestNotificationPermission()
         setContent {
             val settingsEntries = remember { SettingsEntries(this) }
             key(settingsEntries.useMonet) {
                 DeltaPatcherTheme {
                     DeltaPatcherApp(this)
-                }
-            }
-        }
-    }
-
-    private fun requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            when {
-                ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED -> {}
-                else -> {
-                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
             }
         }
@@ -194,6 +166,56 @@ fun DeltaPatcherApp(mainActivity: MainActivity) {
     val settingsEntries = SettingsEntries(LocalContext.current)
     val tabs = listOf("Apply", "Create")
     var isAnyOperationInProgress by rememberSaveable { mutableStateOf(false) }
+    val isFirstTimeSetupCompleted = settingsEntries.isFirstTimeLaunch
+
+    if (isFirstTimeSetupCompleted) {
+        val setup = remember { FirstTimeSetup() }
+        val pages = setup.create(LocalContext.current)
+        var currentPageIndex by rememberSaveable { mutableIntStateOf(0) }
+
+        AnimatedContent(
+            targetState = currentPageIndex,
+            transitionSpec = {
+                val isForward = targetState > initialState
+
+                if (isForward) {
+                    slideInHorizontally(
+                        initialOffsetX = { fullWidth -> fullWidth },
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    ) togetherWith slideOutHorizontally(
+                        targetOffsetX = { fullWidth -> -fullWidth },
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    )
+                } else {
+                    slideInHorizontally(
+                        initialOffsetX = { fullWidth -> -fullWidth },
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    ) togetherWith slideOutHorizontally(
+                        targetOffsetX = { fullWidth -> fullWidth },
+                        animationSpec = tween(400, easing = FastOutSlowInEasing)
+                    )
+                }
+            },
+            label = "setup_page_transition"
+        ) { pageIndex ->
+            if (pageIndex < pages.size) {
+                setup.SetupPage(
+                    page = pages[pageIndex],
+                    onNextClick = {
+                        if (pageIndex < pages.size - 1) {
+                            currentPageIndex++
+                        } else {
+                            settingsEntries.setFirstTimeLaunched(false)
+                        }
+                    },
+                    onBackClick = if (pageIndex > 0) {
+                        { currentPageIndex-- }
+                    } else null
+                )
+            }
+        }
+        return
+    }
 
     BackHandler(enabled = showSettingsMenu) {
         showSettingsMenu = false

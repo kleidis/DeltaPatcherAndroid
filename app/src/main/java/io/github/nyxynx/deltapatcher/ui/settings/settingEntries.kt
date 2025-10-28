@@ -17,6 +17,10 @@ class SettingsEntries(context: Context) {
     // Boolean settings
     var useMonet by mutableStateOf(prefs.getBoolean("use_monet", true))
         private set
+
+    var isFirstTimeLaunch by mutableStateOf(prefs.getBoolean("is_first_time_launch", true))
+        private set
+
     var useChecksum by mutableStateOf(prefs.getBoolean("use_checksum", true))
         private set
 
@@ -47,12 +51,17 @@ class SettingsEntries(context: Context) {
 
     fun updateSecondaryCompression(value: Int) {
         secondaryCompression = value
-        prefs.edit().putInt("secondary_compression", value).apply()
+        prefs.edit { putInt("secondary_compression", value) }
     }
 
     fun updateSrcWindowSize(value: Int) {
         srcWindowSize = value
         prefs.edit { putInt("src_window_size", value) }
+    }
+
+    fun setFirstTimeLaunched(value: Boolean) {
+        isFirstTimeLaunch = value
+        prefs.edit { putBoolean("is_first_time_launch", value) }
     }
 
     companion object {
